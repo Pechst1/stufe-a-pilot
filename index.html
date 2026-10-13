@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stufe-A-Befragung</title>
+<style>
+/* Layout: sticky header with timer and section progress; chat column (agent questions, answers, current question card) plus a time panel on wide screens */
+:root{
+  --bg:#F1F4F6; --surface:#FFFFFF; --surface-2:#E7ECF0; --ink:#15202A; --muted:#566271; --line:#D3DAE1;
+  --accent:#155E75; --accent-ink:#FFFFFF; --accent-soft:#DCEBF1; --you:#155E75; --you-ink:#FFFFFF;
+  --warn:#94570A; --warn-soft:#FBEFD9; --ok:#2B7647; --ok-soft:#DFF0E5; --focus:#0E7490;
+  --f-ui:system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-mono:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1318; --surface:#161D24; --surface-2:#1F2831; --ink:#E3E9EF; --muted:#98A4B2; --line:#2B3641;
+    --accent:#5DB6D3; --accent-ink:#07202A; --accent-soft:#14323D; --you:#1D566A; --you-ink:#EAF6FA;
+    --warn:#E6AD5E; --warn-soft:#3A2B14; --ok:#6CC791; --ok-soft:#15301F; --focus:#5DB6D3; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1318; --surface:#161D24; --surface-2:#1F2831; --ink:#E3E9EF; --muted:#98A4B2; --line:#2B3641;
+  --accent:#5DB6D3; --accent-ink:#07202A; --accent-soft:#14323D; --you:#1D566A; --you-ink:#EAF6FA;
+  --warn:#E6AD5E; --warn-soft:#3A2B14; --ok:#6CC791; --ok-soft:#15301F; --focus:#5DB6D3; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-ui);}
+#app{padding-inline:16px;padding-block:0 56px;}
+h1,h2,h3{text-wrap:balance;margin:0;line-height:1.2}
+p{margin:0}
+button{font:inherit}
+.mono,.tag,.clock,.key,.ptime,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+:is(button,input,select,textarea):focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:500;cursor:pointer;line-height:1.3}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted);padding:6px 8px;font-weight:500}
+.btn.ghost:hover{color:var(--ink);border-color:transparent;background:var(--surface-2)}
+.btn.ghost[aria-pressed="true"]{color:var(--accent);background:var(--accent-soft)}
+.btn.small{padding:4px 8px;font-size:13px}
+
+/* header */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--bg);margin-inline:-16px;padding:10px 16px 8px;border-bottom:1px solid var(--line)}
+.top-in{max-width:1180px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px}
+.brand .title{font-weight:600;font-size:16px}
+.brand .sub{color:var(--muted);font-size:12.5px}
+.ctrls{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.clock{font-size:15px;font-weight:500;padding:4px 10px;border-radius:6px;background:var(--surface-2)}
+.clock .of{color:var(--muted);font-weight:400}
+.clock.over{background:var(--warn-soft);color:var(--warn)}
+.prog{max-width:1180px;margin:8px auto 0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.seg{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.seg i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.seg.opt{opacity:.7}
+.secname{max-width:1180px;margin:6px auto 0;font-size:12.5px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.confirm{max-width:1180px;margin:8px auto 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;background:var(--warn-soft);color:var(--ink)}
+
+/* layout */
+.grid{max-width:1180px;margin:20px auto 0;display:grid;grid-template-columns:minmax(0,1fr);gap:28px;align-items:start}
+@media (min-width:820px){.grid{grid-template-columns:minmax(0,1fr) 270px}}
+.chat{min-width:0;max-width:760px;width:100%;display:flex;flex-direction:column;gap:14px}
+.thread{display:flex;flex-direction:column;gap:12px}
+.divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;margin-top:8px}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.grp{color:var(--muted);font-size:12.5px;font-weight:500}
+.bubble{border-radius:14px;padding:11px 14px;min-width:0;overflow-wrap:anywhere}
+.bubble.agent{align-self:flex-start;max-width:min(640px,100%);background:var(--surface);border:1px solid var(--line);border-top-left-radius:4px}
+.bubble.you{align-self:flex-end;max-width:min(560px,92%);background:var(--you);color:var(--you-ink);border-top-right-radius:4px;white-space:pre-wrap}
+.bubble.you.special{background:var(--surface-2);color:var(--muted);font-style:italic}
+.bubble.you ol{margin:0;padding-left:20px;white-space:normal}
+.bubble.you .meta{opacity:.8;font-size:12.5px}
+.bubble.agent.check{background:var(--warn-soft);border-color:transparent}
+
+/* current card */
+.card{position:relative;background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 28px -20px rgba(10,30,45,.45)}
+.card.check{border-color:var(--warn)}
+.banner{font-size:12.5px;font-weight:500;color:var(--warn);background:var(--warn-soft);border-radius:6px;padding:4px 8px;align-self:flex-start}
+.q{font-size:16.5px;font-weight:500;line-height:1.45}
+.hint{color:var(--muted);font-size:13.5px}
+.err{color:var(--warn);font-size:13.5px;font-weight:500}
+.opts{display:grid;gap:8px}
+.opt{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;cursor:pointer;line-height:1.4}
+.opt:hover{border-color:var(--accent)}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.key{font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:4px;min-width:1.7em;text-align:center;padding:0 4px;line-height:1.6;flex:none}
+.opt .chk{flex:none;width:16px;height:16px;margin-top:2px;border:1.5px solid var(--muted);border-radius:4px;display:grid;place-items:center}
+.opt[aria-pressed="true"] .chk{border-color:var(--accent);background:var(--accent)}
+.opt[aria-pressed="true"] .chk::after{content:"";width:8px;height:4px;border-left:2px solid var(--accent-ink);border-bottom:2px solid var(--accent-ink);transform:rotate(-45deg) translate(1px,-1px)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input[type=text],textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+textarea{resize:vertical;min-height:96px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13.5px;color:var(--muted);min-width:0}
+label .o{font-weight:400}
+.foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
+.foot-l{display:flex;flex-wrap:wrap;gap:2px}
+.info{background:var(--surface-2);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.placeholder{font-size:12.5px;font-weight:500;color:var(--warn)}
+.paused{position:absolute;inset:0;border-radius:14px;background:color-mix(in srgb,var(--surface) 88%,transparent);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:16px}
+
+/* research tags */
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.tag{font-size:11.5px;color:var(--muted);background:var(--surface-2);border-radius:4px;padding:1px 6px}
+.tag.prov{color:var(--warn);background:var(--warn-soft)}
+.tag.id{color:var(--accent);background:var(--accent-soft);font-weight:500}
+.rule{font-size:12.5px;color:var(--muted);border-left:2px solid var(--line);padding-left:10px}
+
+/* steps editor */
+.steps{display:flex;flex-direction:column;gap:10px}
+.step{border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:10px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:640px){.step{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.step .full{grid-column:1/-1}}
+.step-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.step-no{font-weight:600;font-size:13.5px;color:var(--ink)}
+
+/* summary */
+.sum{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.sum-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:9px 12px;border-top:1px solid var(--line);align-items:start}
+.sum-row:first-child{border-top:0}
+.sum-row .k{font-size:12.5px;color:var(--muted)}
+.sum-row .v{font-size:14px;overflow-wrap:anywhere}
+.sum-row .v ol{margin:2px 0 0;padding-left:18px}
+
+/* process view */
+.proc{display:flex;flex-direction:column;gap:2px}
+.pstep{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.pstep.focal{border-color:var(--accent);background:var(--accent-soft)}
+.pn{font-family:var(--f-mono);font-size:12px;width:22px;height:22px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;flex:none}
+.pt{display:flex;flex-direction:column;gap:1px;font-size:13px;min-width:0;overflow-wrap:anywhere}
+.pt span{color:var(--muted);font-size:12px}
+.parrow{text-align:center;color:var(--muted);font-size:12px;line-height:1.2}
+.proc-mobile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.proc-mobile summary{cursor:pointer;margin-bottom:6px}
+.proc-head{max-width:1180px;margin:8px auto 0}
+.proc-head .proc{max-height:45vh;overflow:auto;margin-top:6px}
+@media (min-width:820px){.proc-mobile,.proc-head{display:none}}
+/* panel */
+.panel{display:none}
+@media (min-width:820px){.panel{display:flex;flex-direction:column;gap:14px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 112px);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}}
+.panel h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;font-size:13px}
+.prow .pname{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow.cur .pname{font-weight:600}
+.ptime{font-size:12px}
+.ptime span{color:var(--muted)}
+.ptime.over{color:var(--warn)}
+.pbar{grid-column:1/-1;height:4px;border-radius:2px;background:var(--surface-2);overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--accent)}
+.pbar i.over{background:var(--warn)}
+.kv{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;font-size:13px}
+.kv .num{text-align:right}
+
+/* start + end pages */
+.page{max-width:1080px;margin:28px auto 0;display:grid;grid-template-columns:minmax(0,1fr);gap:24px}
+@media (min-width:900px){.page{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.eyebrow{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.page h1{font-size:30px;font-weight:600;letter-spacing:-.01em}
+.lead{font-size:15.5px;max-width:62ch}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.box h2{font-size:15px;font-weight:600}
+.note{font-size:13.5px;color:var(--muted)}
+.radio{display:flex;gap:10px;align-items:flex-start;flex-direction:row;color:var(--ink);font-size:14px;cursor:pointer}
+.radio input{margin-top:4px;accent-color:var(--accent)}
+.radio small{display:block;color:var(--muted);font-size:12.5px}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:7px 8px;border-top:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:12px;border-top:0}
+td.n,th.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+ul.plain,ol.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+details summary{cursor:pointer;font-weight:500}
+details[open] summary{margin-bottom:8px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:var(--surface-2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.stat .big{font-family:var(--f-mono);font-size:24px;font-weight:500;font-variant-numeric:tabular-nums}
+.stat .lbl{font-size:12.5px;color:var(--muted)}
+.pill{align-self:flex-start;font-size:12px;font-weight:500;padding:2px 8px;border-radius:999px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+#json{font-family:var(--f-mono);font-size:12px;min-height:260px;line-height:1.45}
+.flash{font-size:13px;color:var(--ok)}
+.resume{background:var(--accent-soft);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+
+<div id="app"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- Instrument (Spezifikation v0.1, Stand 03.10.2026) ---------- */
+const VERSION = '0.2-pilot · Spezifikation Stand 13.10.2026 (ohne KI-Modell)';
+const STORE_KEY = 'stufeA-prototyp-v1';
+const SECTIONS = [
+  {id:'0',  name:'Start und Filter', target:90},
+  {id:'1',  name:'Rolle und Use Case', target:120},
+  {id:'2',  name:'Typischer Ablauf', target:240},
+  {id:'3',  name:'Kontrolle und weitere Dimensionen', target:330},
+  {id:'4',  name:'Veränderungen', target:150},
+  {id:'5',  name:'Zusammenfassung und Kontakt', target:60},
+  {id:'opt',name:'Vertiefung (optional)', target:300}
+];
+const SEC = Object.fromEntries(SECTIONS.map(s=>[s.id,s]));
+const ORDER = SECTIONS.map(s=>s.id);
+const CORE_TARGET = 15*60*1000;
+const VARIANTS = [
+  {label:'Voll', short:'Variante voll', desc:'Alle Kernfragen in der Kernstrecke.'},
+  {label:'Kürzung Stufe 1 (E8)', short:'Kürzung Stufe 1', desc:'F3.6, F3.7, F3.16 und F3.18 wandern in den optionalen Block.'},
+  {label:'Kürzung Stufe 2 (E8)', short:'Kürzung Stufe 2', desc:'Zusätzlich F3.22 bis F3.24 (Aufgabenmerkmale).'}
+];
+
+function o(v,label,ex,extra){ return Object.assign({v:v,label:label,ex:ex||null}, extra||{}); }
+const K_OPTS = [
+  o('K1','Mensch entscheidet und handelt, die KI liefert nur Informationen oder Vorschläge'),
+  o('K2','erst nach Freigabe durch einen Menschen'),
+  o('K3','automatisch, wenn niemand rechtzeitig widerspricht'),
+  o('K4','sofort; ein Mensch wird informiert oder prüft danach'),
+  o('K5','sofort; ein Mensch schaut nur bei Bedarf oder gar nicht')
+];
+const KI_OPTS = [
+  o('nichts','nichts'), o('erfasst','sammelt oder erfasst Informationen'), o('analysiert','analysiert oder bewertet'),
+  o('schlaegt_vor','schlägt eine Entscheidung oder Antwort vor bzw. wählt aus'), o('fuehrt_aus','erstellt oder führt das Ergebnis selbst aus')
+];
+const JANEIN = [o('ja','ja'), o('nein','nein')];
+const P6_WORDS = ['besser','neues modell','neuere modell','neue version','neuere version','modellwechsel','update','upgrade','genauer','zuverlässiger','leistungsfähiger','fähiger'];
+
+function p8(field, sec, text){
+  return {id:'P8-'+field, sec:sec, type:'open', probe:true, text:text,
+    code:'P8 · Nachfrage zu '+field, rule:'Auslöser: offene Kernantwort kürzer als 20 Zeichen oder 4 Wörter.',
+    cond:function(){ const v=A(field); return typeof v==='string' && !special(v) && (v.trim().length<20 || v.trim().split(/\s+/).length<4); }};
+}
+
+const ITEMS = [
+  // Abschnitt 0
+  {id:'F0.1', sec:'0', type:'consent', noUnknown:true, text:'Bevor wir beginnen, kurz zu dieser Befragung.', code:'consent'},
+  {id:'F0.2', sec:'0', type:'single', text:'Ist die KI-Anwendung, über die Sie sprechen möchten, im regulären Betrieb im Einsatz, also nicht nur als Pilot oder Test?',
+    opts:[o('regulaer','im regulären Betrieb'), o('pilot','im Pilotbetrieb mit echten Fällen'), o('test','nur Test oder Prototyp')],
+    code:'status_betrieb · Filter (E7)', rule:'„nur Test oder Prototyp“ beendet die Befragung höflich (E7). Pilotbetrieb wird markiert.'},
+  {id:'C-F0.2', sec:'0', type:'check', target:'F0.2', okLabel:'Im Pilot weitermachen', changeLabel:'Antwort ändern', code:'Filter E7 (im Pilot nur Hinweis)',
+    rule:'In der echten Befragung endet sie hier höflich (E7). Im Pilot geht es nach Bestätigung weiter.',
+    cond:function(){ return is('F0.2','test'); },
+    msg:function(){ return 'Hinweis für den Pilot: In der echten Befragung würde sie hier enden, weil nur Anwendungen erfasst werden, die mit echten Fällen arbeiten. Möchten Sie für den Pilot trotzdem weitermachen?'; }},
+  {id:'F0.3', sec:'0', type:'multi', text:'Wie sind Sie selbst an dieser Anwendung beteiligt?', hint:'Mehrere Antworten möglich.',
+    opts:[o('fachlich_verantwortlich','verantworte sie fachlich'), o('entwickelt','habe sie (mit)entwickelt oder eingeführt'), o('nutzt','arbeite regelmäßig damit'), o('entscheidet_mit','entscheide über ihren Einsatz mit'), o('von_aussen','kenne sie eher von außen')],
+    code:'beteiligung · Stufe-B-Kriterium'},
+  // Abschnitt 1
+  {id:'F1.1', sec:'1', type:'single', text:'Was ist Ihre Rolle im Unternehmen?', otherLabel:'Ihre Rolle',
+    opts:[o('fachbereich','Fach- oder Prozessverantwortung'), o('produkt','Produkt- oder Projektmanagement'), o('ki_team','KI-, Daten- oder Automatisierungsteam'), o('it','Softwareentwicklung oder IT'), o('leitung','Geschäftsführung oder Bereichsleitung'), o('extern','externe Beratung oder Dienstleister'), o('sonstige','Andere Rolle (bitte selbst angeben)',null,{other:true})],
+    code:'rolle (Auswahl + Sonstige, VP 08.10.)'},
+  {id:'F1.2', sec:'1', type:'single', text:'In welcher Branche ist Ihr Unternehmen tätig?', otherLabel:'Ihre Branche',
+    opts:[o('finanz','Finanzdienstleistung oder Versicherung'), o('gesundheit','Gesundheit oder Pharma'), o('energie','Energie oder Versorgung'), o('software','Software oder IT'), o('beratung','Beratung oder Professional Services'), o('industrie','Industrie oder Automotive'), o('logistik','Logistik'), o('oeffentlich','öffentlicher Sektor'), o('sonstige','Andere Branche (bitte selbst angeben)',null,{other:true})],
+    code:'branche · Sampling-Matrix'},
+  {id:'F1.3', sec:'1', type:'single', text:'Wie viele Beschäftigte hat Ihr Unternehmen etwa?',
+    opts:[o('lt50','weniger als 50'), o('50-249','50 bis 249'), o('250-999','250 bis 999'), o('1000-9999','1.000 bis 9.999'), o('ge10000','10.000 oder mehr')], code:'groesse'},
+  {id:'F1.4', sec:'1', type:'open', text:'Beschreiben Sie die Anwendung in ein bis zwei Sätzen: Wofür wird sie genutzt, und wer arbeitet damit?', code:'usecase_beschreibung'},
+  // Abschnitt 2
+  {id:'F2.1', sec:'2', agentOnly:true, type:'open', text:'Denken Sie an einen typischen Fall, den diese Anwendung in den letzten Wochen bearbeitet hat. Was löst ihn aus, was passiert dann Schritt für Schritt, und was kommt am Ende heraus?', ctx:'F1.4', code:'ablauf_roh'},
+  Object.assign({agentOnly:true}, p8('F2.1','2','Können Sie den Ablauf etwas genauer beschreiben: Was passiert, bevor die KI ins Spiel kommt, was macht sie, und was passiert danach?')),
+  {id:'F2.2', sec:'2', type:'steps', text:'Beschreiben Sie den Ablauf Ihrer Anwendung in drei bis fünf Schritten: Was passiert in jedem Schritt, was macht die KI dabei, und wann wird ihr Ergebnis wirksam?', ctx:'F1.4',
+    code:'prozess[] · DIM-BRE · CASE-FUNC · DIM-OVR/OV-TIME (K1–K5)', rule:'Die Person trägt den Ablauf direkt in Schritten ein (mindestens zwei). Ohne KI-Modell (VP 13.10.) entfallen F2.1, P8-F2.1, P1 und F2.2r.'},
+  {id:'P1', sec:'2', agentOnly:true, type:'open', probe:true, text:'Was passiert unmittelbar, bevor die KI ins Spiel kommt, und was direkt danach?', code:'P1 · DIM-BRE', rule:'Auslöser: weniger als zwei Schritte eingetragen.',
+    cond:function(){ const s=A('F2.2'); return Array.isArray(s) && s.length<2 && !real(A('P8-F2.1')); }},
+  {id:'F2.2r', sec:'2', agentOnly:true, type:'steps', text:'Danke. Möchten Sie die Schritte jetzt ergänzen?', code:'prozess[] (Ergänzung nach P1)', cond:function(){ return real(A('P1')); }},
+  {id:'F2.3', sec:'2', type:'stepPick', text:'Bei welchem dieser Schritte hätte ein Fehler der KI die größten Folgen? Die nächsten Fragen zur Prüfung beziehen sich auf diesen Schritt.',
+    code:'Fokus-Schritt für Abschnitt 3a (Vorschlag 08.10.)', rule:'Nur bei mindestens zwei Schritten mit KI; bei genau einem KI-Schritt ist dieser automatisch der Fokus-Schritt.',
+    cond:function(){ return aiSteps().length>=2; }},
+  // Abschnitt 3a
+  {id:'F3.1', sec:'3', grp:'Menschliche Kontrolle', type:'single', text:'Laufen alle Fälle dieses Ablaufs über die KI, oder werden manche Fälle von vornherein ohne KI bearbeitet?',
+    opts:[o('alle','alle laufen über die KI'), o('meisten','die meisten, einige werden ohne KI bearbeitet'), o('haelfte','etwa die Hälfte'), o('kleiner_teil','nur ein kleinerer Teil'), o('bestimmte','nur bestimmte Fallarten','z. B. nur einfache Fälle')], code:'DIM-COV'},
+  {id:'F3.1a', sec:'3', grp:'Menschliche Kontrolle', type:'short', text:'Welche Fälle werden ohne KI bearbeitet, und warum?', code:'DIM-COV · OV-SCOPE',
+    cond:function(){ return is('F3.1','meisten','haelfte','kleiner_teil','bestimmte'); }},
+  {id:'F3.2', sec:'3', grp:'Menschliche Kontrolle', type:'single', text:'Welche Ergebnisse aus {FOKUS} sieht sich ein Mensch an, bevor oder nachdem sie wirksam werden?',
+    opts:[o('alle','alle'), o('art','alle einer bestimmten Art','z. B. nach Betrag oder Risiko'), o('stichprobe','eine Stichprobe'), o('auffaellige','nur auffällige oder vom System markierte'), o('keine','keine fallbezogene Prüfung')], code:'OV-SCOPE'},
+  {id:'C-F3.2', sec:'3', grp:'Menschliche Kontrolle', type:'check', target:'F3.2', code:'Plausibilitätsregel (A7)', rule:'Regel: F3.2 = keine fallbezogene Prüfung, aber Fokus-Schritt mit K2 (erst nach Freigabe).',
+    cond:function(){ const f=focal(); return is('F3.2','keine') && f && f.s.kontrolle==='K2'; },
+    msg:function(){ return 'Beim Ablauf hatten Sie für '+focusLabel()+' angegeben, dass das Ergebnis erst nach Freigabe durch einen Menschen wirksam wird. Passt „keine fallbezogene Prüfung“ trotzdem?'; }},
+  {id:'F3.2a', sec:'3', grp:'Menschliche Kontrolle', type:'single', text:'Wodurch werden Ergebnisse markiert?',
+    opts:[o('regel','feste Regel oder Schwelle'), o('ki_sicherheit','Sicherheitsangabe der KI selbst'), o('zweite_pruefung','zweite automatische Prüfung oder Uneinigkeit mehrerer automatischer Prüfungen','z. B. ein anderes System oder Modell')],
+    code:'OV-SCOPE · Attribut Auslöser (VP 04.10., K2)', cond:function(){ return is('F3.2','auffaellige'); }},
+  {id:'F3.2b', sec:'3', grp:'Menschliche Kontrolle', type:'multi', text:'Gibt es stattdessen eine andere Form der Kontrolle?', hint:'Mehrere Antworten möglich.',
+    opts:[o('dashboard','Dashboard oder Kennzahlen'), o('audits','Stichproben-Audits im Nachhinein'), o('berichte','regelmäßige Qualitätsberichte'), o('keine','keine',null,{exclusive:true})],
+    code:'DIM-OVR · OV-EVID (VP 03.10., offener Punkt 11)', cond:function(){ return is('F3.2','keine'); }},
+  {id:'F3.3', sec:'3', grp:'Menschliche Kontrolle', type:'single', text:'Wie oft ändert oder verwirft die prüfende Person ein Ergebnis aus {FOKUS}?',
+    opts:[o('fast_nie','fast nie'), o('selten','selten'), o('manchmal','manchmal'), o('haeufig','häufig')], code:'OV-PRAX',
+    rule:'Annahme im Prototyp: entfällt, wenn F3.2 = keine fallbezogene Prüfung.', cond:function(){ return !is('F3.2','keine'); }},
+  {id:'P3', sec:'3', grp:'Menschliche Kontrolle', type:'open', probe:true, text:'Was schaut sich die prüfende Person dabei konkret an?', code:'P3 · OV-PRAX · OV-PROXY',
+    rule:'Auslöser: F3.2 = alle und F3.3 = fast nie.', cond:function(){ return is('F3.2','alle') && is('F3.3','fast_nie'); }},
+  {id:'F3.4', sec:'3', grp:'Menschliche Kontrolle', type:'single', text:'Wird erfasst, wie oft Ergebnisse aus {FOKUS} bei der Prüfung geändert oder verworfen werden?',
+    opts:[o('ja_ausgewertet','ja, regelmäßig ausgewertet'), o('ja_nicht','ja, aber nicht ausgewertet'), o('nein','nein')], code:'OV-EVID',
+    rule:'Annahme im Prototyp: entfällt, wenn F3.2 = keine fallbezogene Prüfung.', cond:function(){ return !is('F3.2','keine'); }},
+  {id:'F3.4a', sec:'3', grp:'Menschliche Kontrolle', type:'single', text:'Wurde diese automatische Prüfung mit menschlicher Prüfung abgeglichen?',
+    opts:[o('ja_systematisch','ja, systematisch'), o('ja_stichprobe','ja, stichprobenartig'), o('nein','nein')],
+    code:'OV-EVID · Attribut Prüfinstanz = automatisch (VP 04.10., K1)', rule:'Auslöser im Prototyp: F3.2a = zweite automatische Prüfung.', cond:function(){ return is('F3.2a','zweite_pruefung'); }},
+  {id:'F3.5', sec:'3', grp:'Menschliche Kontrolle', type:'short', text:'Wer darf ein Ergebnis aus {FOKUS} stoppen, ändern oder die Nutzung der KI für einen Fall aussetzen?', hint:'Rollen genügen, keine Namen.', code:'OV-RIGHTS'},
+  {id:'F3.6', sec:'3', grp:'Menschliche Kontrolle', e8:1, type:'single', text:'Wenn ein fehlerhaftes Ergebnis aus {FOKUS} wirksam wird: Lässt es sich rückgängig machen?',
+    opts:[o('leicht','leicht'), o('aufwand','mit Aufwand'), o('nicht','praktisch nicht')], code:'OV-REV'},
+  {id:'F3.7', sec:'3', grp:'Menschliche Kontrolle', e8:1, type:'single', text:'Gibt es Situationen, in denen das System einen Fall automatisch an einen Menschen weitergibt?', opts:JANEIN, code:'OV-FALLBACK · ereignisgetriebene Rückgabe an Menschen (VP 04.10., K3)'},
+  {id:'F3.8', sec:'3', grp:'Menschliche Kontrolle', type:'single', text:'Gibt es festgelegte Bedingungen, unter denen die menschliche Prüfung reduziert oder verstärkt würde?',
+    opts:[o('schriftlich','ja, schriftlich festgelegt'), o('informell','ja, informell'), o('nein','nein')], code:'OV-THR'},
+  {id:'P4', sec:'3', grp:'Menschliche Kontrolle', type:'open', probe:true, text:'Wer hat diese Bedingungen festgelegt?', code:'P4 · OV-THR', rule:'Auslöser: F3.8 = ja.',
+    cond:function(){ return is('F3.8','schriftlich','informell'); }},
+  // 3b
+  {id:'F3.9', sec:'3', grp:'Daten und Systemanbindung', type:'multi', text:'Mit welchen Daten arbeitet die KI?', hint:'Mehrere Antworten möglich.',
+    opts:[o('intern_doks','interne Dokumente oder Wissensbasis'), o('geschaeftssysteme','Geschäftssysteme','z. B. ERP, CRM'), o('kommunikation','E-Mails, Tickets, Chats'), o('extern','externe Daten oder Web'), o('nur_eingaben','nur Eingaben der Nutzenden'), o('anderes','Anderes (bitte selbst angeben)',null,{other:true})], code:'CON-DAT'},
+  {id:'F3.10', sec:'3', grp:'Daten und Systemanbindung', type:'single', text:'Was darf die KI in anderen Systemen tun?',
+    opts:[o('nichts','nichts, Ergebnisse werden manuell übertragen'), o('lesen','Daten lesen'), o('schreiben','Daten schreiben oder ändern'), o('aktionen','Aktionen auslösen','z. B. E-Mail senden, Buchung, Bestellung')], code:'CON-SEC · CON-DAT'},
+  // 3c
+  {id:'F3.11', sec:'3', grp:'Modell und Betrieb', type:'single', text:'Wer hat die Anwendung gebaut?',
+    opts:[o('intern','intern'), o('dienstleister','externer Dienstleister'), o('produkt','fertiges Produkt eines Anbieters'), o('kombination','Kombination')], code:'sourcing'},
+  {id:'F3.12', sec:'3', grp:'Modell und Betrieb', type:'short', text:'Welches KI-Modell bzw. welcher Anbieter steckt dahinter? Nennen Sie, falls bekannt, auch die Version.', code:'modell · CAPEV-CONF (a)'},
+  {id:'F3.13', sec:'3', grp:'Modell und Betrieb', type:'single', text:'Wird das Modell unverändert genutzt, angepasst oder selbst entwickelt?',
+    opts:[o('unveraendert','unverändert'), o('angepasst','angepasst','z. B. feinjustiert'), o('selbst','selbst entwickelt')], code:'CASE-SCALE'},
+  {id:'F3.14', sec:'3', grp:'Modell und Betrieb', prov:true, type:'single', text:'Wo läuft das Modell?',
+    opts:[o('anbieter','direkt beim Modellanbieter (API)','z. B. OpenAI, Anthropic, Mistral'), o('hyperscaler','bei einem großen Cloud-Anbieter','z. B. Microsoft Azure, AWS, Google Cloud'), o('eu_cloud','bei einem europäischen oder souveränen Cloud-Anbieter'), o('private_cloud','in der eigenen Cloud-Umgebung (Private Cloud)'), o('eigenes_rz','im eigenen Rechenzentrum')], code:'FR-ACCESS (Betriebsort, granular VP 08.10.)'},
+  {id:'F3.14b', sec:'3', grp:'Modell und Betrieb', prov:true, type:'single', text:'Werden die Daten dabei ausschließlich in der EU verarbeitet?', opts:JANEIN, code:'FR-ACCESS (Datenstandort, VP 08.10.)'},
+  {id:'F3.15', sec:'3', grp:'Modell und Betrieb', prov:true, type:'single', text:'Welche Art von Modell wird genutzt?',
+    opts:[o('proprietaer','proprietäres Modell, nur über den Anbieter nutzbar','z. B. GPT, Claude, Gemini'), o('open_weight','Modell mit offenen Gewichten','z. B. Llama, Mistral, Qwen'), o('open_source','vollständig offenes Modell (Gewichte, Code und Trainingsdaten)'), o('mehrere','mehrere Modelle unterschiedlicher Art')], code:'FR-ACCESS (Lizenz, granular VP 08.10.)'},
+  {id:'F3.14a', sec:'3', grp:'Modell und Betrieb', prov:true, type:'multi', text:'Was gab den Ausschlag für dieses Modell und diesen Betriebsort?', hint:'Mehrere Antworten möglich.',
+    opts:[o('datenschutz','Datenschutz oder Sorge vor Datenabfluss'), o('souveraenitaet','Unabhängigkeit vom Anbieter oder Souveränität'), o('qualitaet','Qualität und Leistung'), o('kosten','Kosten'), o('vorgabe','Vorgabe von IT oder Konzern'), o('verfuegbarkeit','Verfügbarkeit, es gab keine Alternative'), o('anderes','Anderes (bitte selbst angeben)',null,{other:true})],
+    code:'FR-ACCESS (Begründung) · D3 als Fallmerkmal (VP 08.10.)'},
+  {id:'F3.16', sec:'3', grp:'Modell und Betrieb', e8:1, type:'single', text:'Wird ein Modell genutzt oder mehrere?', qex:'z. B. je nach Aufgabe oder Schwierigkeit',
+    opts:[o('eines','eines'), o('mehrere','mehrere')], code:'CASE-SCALE (optionales Feld)'},
+  // 3d
+  {id:'F3.17', sec:'3', grp:'Organisation und Regulatorik', type:'multi', text:'Welche Vorgaben spielen für diese Anwendung eine Rolle?', hint:'Mehrere Antworten möglich.',
+    opts:[o('dsgvo','Datenschutz (DSGVO)'), o('ai_act','EU AI Act'), o('branche','branchenspezifische Aufsicht oder Regeln'), o('richtlinie','interne KI-Richtlinie'), o('betriebsrat','Betriebsvereinbarung oder Betriebsrat'), o('anderes','Anderes (bitte selbst angeben)',null,{other:true}), o('keine','keine besonderen',null,{exclusive:true})], code:'CON-GOV · CON-ORG'},
+  {id:'F3.18', sec:'3', grp:'Organisation und Regulatorik', e8:1, type:'single', text:'Wo liegt die Verantwortung für die Anwendung?',
+    opts:[o('fachbereich','Fachbereich'), o('it','IT'), o('ki_team','zentrales KI- oder Digitalteam'), o('gemeinsam','gemeinsam')], code:'CON-ORG'},
+  // 3e
+  {id:'F3.19', sec:'3', grp:'Reifegrad', type:'month', text:'Seit wann ist die Anwendung im Einsatz?', code:'einsatz_seit'},
+  {id:'F3.20', sec:'3', grp:'Reifegrad', type:'single', text:'Wie breit ist sie ausgerollt?',
+    opts:[o('team','ein Team'), o('bereich','ein Bereich oder Standort'), o('mehrere','mehrere Bereiche'), o('unternehmensweit','unternehmensweit')], code:'rollout · CASE-SCALE'},
+  // 3f
+  {id:'F3.22', sec:'3', grp:'Aufgabenmerkmale', e8:2, type:'single', text:'Wie ähnlich sind sich die Fälle, die die Anwendung bearbeitet?',
+    opts:[o('sehr_aehnlich','sehr ähnlich'), o('teils','teils unterschiedlich'), o('sehr_unterschiedlich','sehr unterschiedlich, häufig Sonderfälle')], code:'CASE-TASK (Unsicherheit)'},
+  {id:'F3.23', sec:'3', grp:'Aufgabenmerkmale', e8:2, type:'single', text:'Hängt das Ergebnis eines Falls von Arbeiten anderer Personen, Teams oder Systeme ab, die sich währenddessen ändern können?',
+    opts:[o('kaum','kaum'), o('teilweise','teilweise'), o('stark','stark')], code:'CASE-TASK (Interdependenz)'},
+  {id:'F3.24', sec:'3', grp:'Aufgabenmerkmale', e8:2, type:'single', text:'Verlangt die Entscheidung in diesem Ablauf eher die Anwendung klarer Regeln oder eher Abwägung und Ermessen?',
+    opts:[o('regeln','klare Regeln'), o('teils','teils, teils'), o('abwaegung','vor allem Abwägung')], code:'CASE-DISC'},
+  // Abschnitt 4
+  {id:'F4.1', sec:'4', type:'single', text:'Hat sich seit dem Start etwas daran verändert, welche Schritte die KI übernimmt oder wie Menschen ihre Ergebnisse prüfen?',
+    opts:[o('REAL','ja, umgesetzt'), o('REVR','ja, eingeführt und später wieder zurückgenommen'), o('TEST','getestet, aber nicht umgesetzt'), o('CONS','konkret erwogen, aber nicht getestet'), o('HELD','nein, bewusst so belassen'), o('NOTP','nein, war bisher kein Thema')],
+    code:'ST-REAL · ST-REVR · ST-TEST · ST-CONS · ST-HELD · ST-NOTP', rule:'Ohne Beispielvorfälle; gefragt wird nach der jüngsten Veränderung (flanagan1954).'},
+  {id:'P7', sec:'4', type:'open', probe:true, text:'Was müsste passieren, damit Sie das ändern würden?', code:'P7 · OV-THR · EV-HELD', rule:'Auslöser: F4.1 = bewusst so belassen.',
+    cond:function(){ return is('F4.1','HELD'); }},
+  {id:'F4.2', sec:'4', type:'open', text:'Denken Sie an die jüngste solche Veränderung. Was genau sollte sich ändern?', code:'veraenderung_beschreibung', cond:changed},
+  p8('F4.2','4','Können Sie etwas genauer beschreiben, was sich am Ablauf oder an der Prüfung ändern sollte?'),
+  {id:'P5', sec:'4', type:'open', probe:true, text:'Was hat zur Rücknahme geführt?', code:'P5 · ST-REVR', rule:'Auslöser: F4.1 = zurückgenommen.', cond:function(){ return is('F4.1','REVR'); }},
+  {id:'F4.3', sec:'4', type:'single', text:'In welche Richtung ging sie?',
+    opts:[o('mehr_ki','KI übernimmt mehr Schritte oder Fälle'), o('weniger_pruefung','weniger menschliche Prüfung'), o('weniger_ki','KI übernimmt weniger'), o('mehr_pruefung','mehr menschliche Prüfung'), o('anderes','anderes')],
+    code:'richtung · DIM-COV/BRE/OVR', cond:changed},
+  {id:'F4.4', sec:'4', type:'month', text:'Wann war das ungefähr?', code:'IWE-DEC (Datum) · Zeitabstand', cond:changed},
+  {id:'C-F4.4', sec:'4', type:'check', target:'F4.4', code:'Plausibilitätsregel (A7)', rule:'Regel: Datum der Veränderung vor dem Einsatzbeginn (F3.19) oder in der Zukunft.',
+    cond:function(){ return dateIssue()!==null; }, msg:function(){ return dateIssue(); }},
+  {id:'F4.5', sec:'4', type:'short', text:'Was war der Anlass?', code:'anlass (später IWE-INT/CAPEV)', cond:changed},
+  {id:'P6', sec:'4', type:'open', probe:true, text:'Hat sich zur gleichen Zeit noch etwas anderes geändert, zum Beispiel am Ablauf, an Regeln oder an den Daten?', code:'P6 · CAPEV-CONF · EV-MULTI',
+    rule:'Auslöser im Prototyp: Stichwortliste in F4.5 ('+P6_WORDS.join(', ')+').',
+    cond:function(){ const v=A('F4.5'); if(typeof v!=='string'||special(v)) return false; const l=v.toLowerCase(); return P6_WORDS.some(function(w){return l.indexOf(w)>-1;}); }},
+  {id:'F4.6', sec:'4', type:'multi', text:'Worauf stützte sich die Entscheidung bzw. Ihre Einschätzung?', hint:'Mehrere Antworten möglich.',
+    opts:[o('kennzahl','Kennzahl, Test oder Auswertung'), o('dokument','Dokument oder formale Freigabe'), o('beobachtung','eigene Beobachtung'), o('einschaetzung','Einschätzung anderer oder Vermutung'), o('anderes','Anderes (bitte selbst angeben)',null,{other:true})], code:'EVI-C1–C4 (leichte Form, E5)', cond:changed},
+  {id:'F4.7', sec:'4', type:'single', text:'Wie waren Sie an dieser Veränderung beteiligt?',
+    opts:[o('entschieden','habe entschieden'), o('beteiligt','war beteiligt'), o('informiert','wurde informiert'), o('nicht','nicht beteiligt')], code:'beteiligung_event', cond:changed},
+  {id:'F4.8', sec:'4', type:'single', text:'War das schon vor dieser Befragung Thema im Team?', opts:[o('ja','ja'), o('neu','nein, kommt mir gerade')], code:'hypothetisch (Exposé §4.2)',
+    cond:function(){ return is('F4.1','CONS'); }},
+  {id:'F4.9', sec:'4', type:'multi', text:'Was begrenzt derzeit, dass die KI mehr übernimmt oder weniger geprüft wird?', hint:'Mehrere Antworten möglich.',
+    opts:[o('qualitaet','Qualität oder Zuverlässigkeit der Ergebnisse'), o('pruefbarkeit','Ergebnisse schwer überprüfbar oder Fehlerfolgen zu hoch'), o('daten','Daten oder Systemanbindung'), o('recht','Recht, Regulierung, interne Freigaben'), o('organisation','Zuständigkeiten, Kompetenzen, Akzeptanz'), o('kosten','Kosten oder Nutzen'), o('sicherheit','IT-Sicherheit oder Berechtigungen'), o('abhaengigkeit','Abhängigkeit von Anbieter oder Technik'), o('anderes','Anderes (bitte selbst angeben)',null,{other:true}), o('gewollt','nichts, der jetzige Stand ist gewollt',null,{exclusive:true})],
+    code:'AS-BAR · CON-CAP/VER/DAT/GOV/ORG/ECO/SEC/ARC'},
+  {id:'F4.10', sec:'4', type:'stopper', text:'Hat einer dieser Punkte eine konkrete Entscheidung oder einen Versuch tatsächlich gestoppt? Welcher?', code:'Kandidat AS-BLK (nur Markierung für Stufe B)',
+    rule:'Keine Codierung in Stufe A. Angeboten werden die in F4.9 gewählten Begrenzungen.',
+    cond:function(){ const b=A('F4.9'); return Array.isArray(b) && b.some(function(x){return x!=='gewollt';}); }},
+  // Abschnitt 5
+  {id:'F5.1', sec:'5', type:'summary', noUnknown:true, text:'Hier ist die Zusammenfassung Ihrer Angaben. Stimmt das so? Sie können einzelne Punkte korrigieren.', code:'korrekturen[]'},
+  {id:'F5.2', sec:'5', type:'multi', text:'Gibt es zu der beschriebenen Veränderung Unterlagen? Welche Art?', qex:'z. B. Auswertungen, Freigabedokumente, Protokolle', hint:'Ein Upload ist im echten Instrument freiwillig und keine Voraussetzung.',
+    opts:[o('auswertung','Auswertungen oder Kennzahlen'), o('freigabe','Freigabe- oder Entscheidungsdokumente'), o('protokoll','Protokolle oder Tickets'), o('sonstiges','Sonstiges'), o('keine','keine',null,{exclusive:true})],
+    code:'dokumentarten', rule:'Antwortoptionen sind ein Formulierungsvorschlag; nur gefragt, wenn eine Veränderung berichtet wurde.', cond:changed},
+  {id:'F5.3', sec:'5', type:'single', text:'Dürfen wir Sie für ein vertiefendes Gespräch (30 bis 45 Minuten) kontaktieren?', opts:JANEIN, code:'kontakt_ok',
+    rule:'Im Prototyp werden keine Kontaktdaten abgefragt. Im echten Instrument folgen sie hier und werden getrennt vom Analysedatensatz gespeichert.'},
+  {id:'OPT', sec:'5', type:'single', noUnknown:true, text:'Das war der Kernteil. Haben Sie noch vier bis sechs Minuten für einige Zusatzfragen?', opts:[o('ja','Ja, gern'), o('nein','Nein, danke')], code:'OPT_ANGEBOT'},
+  // Optionaler Block
+  {id:'O.1', sec:'opt', type:'single', text:'Aus welchem Budget wird die Anwendung finanziert?',
+    opts:[o('zentral','zentrales IT- oder KI-Budget'), o('fachbereich','Budget des Fachbereichs'), o('projekt','Projekt- oder Innovationsbudget'), o('foerder','Fördermittel')], code:'budget'},
+  {id:'O.2', sec:'opt', type:'multi', text:'Welche Kostenarten fallen an?', hint:'Mehrere Antworten möglich.',
+    opts:[o('lizenzen','Lizenzen oder Abos'), o('nutzung','nutzungsabhängige Modellkosten'), o('infrastruktur','eigene Infrastruktur'), o('entwicklung','Entwicklung oder Integration'), o('betrieb','Betrieb oder Wartung'), o('pruefzeit','Arbeitszeit für die Prüfung der Ergebnisse'), o('anderes','Anderes (bitte selbst angeben)',null,{other:true})], code:'CON-ECO'},
+  {id:'O.3', sec:'opt', type:'single', text:'Wie viele Fälle bearbeitet die Anwendung etwa pro Monat?',
+    opts:[o('lt100','weniger als 100'), o('100-1000','100 bis 1.000'), o('1000-10000','1.000 bis 10.000'), o('gt10000','mehr als 10.000')], code:'CASE-SCALE (Volumen)'},
+  {id:'O.4', sec:'opt', type:'multi', text:'Wie wird der Nutzen gemessen?', hint:'Mehrere Antworten möglich.',
+    opts:[o('nicht_formal','nicht formal',null,{exclusive:true}), o('zeit','Zeitersparnis'), o('kosten','Kosten'), o('qualitaet','Qualität oder Fehlerquote'), o('durchsatz','Durchsatz'), o('zufriedenheit','Kunden- oder Mitarbeiterzufriedenheit'), o('umsatz','Umsatz'), o('anderes','Anderes (bitte selbst angeben)',null,{other:true})], code:'Wertmessung · CAPEV-Messebene'},
+  {id:'O.5', sec:'opt', type:'single', text:'Wurde der Nutzen in einer Wirtschaftlichkeitsrechnung bewertet?', opts:[o('ja','ja'), o('geplant','geplant'), o('nein','nein')], code:'ROI'},
+  {id:'O.6', sec:'opt', type:'multi', text:'Woran machen Sie fest, ob die Ergebnisse der KI gut genug sind?', hint:'Mehrere Antworten möglich.',
+    opts:[o('stichproben','Stichproben durch Fachleute'), o('rueckmeldungen','Rückmeldungen von Nutzenden'), o('tests','automatische Tests oder Kennzahlen'), o('ki_bewertung','Bewertung durch ein anderes KI-Modell'), o('eindruck','allgemeiner Eindruck'), o('anderes','Anderes (bitte selbst angeben)',null,{other:true})], code:'CAPEV-DOC/REP'},
+  {id:'O.7', sec:'opt', prov:true, type:'open', text:'Wurden andere Modelle getestet? Welche, und warum fiel die Wahl auf das jetzige?', code:'FR-ALT (E3)'},
+  {id:'O.8', sec:'opt', type:'multi', text:'Welche weiteren Komponenten gehören zur Anwendung?', hint:'Mehrere Antworten möglich.',
+    opts:[o('suche','Suche in Dokumenten'), o('werkzeuge','Werkzeuge oder Schnittstellen'), o('regeln','feste Regeln vor oder nach dem Modell'), o('anderes','Anderes (bitte selbst angeben)',null,{other:true}), o('keine','keine weiteren',null,{exclusive:true})], code:'CAPEV-CONF'}
+];
+const VIGNETTE = '<details class="info" open><summary><b>Fiktiver Beispielfall</b> (für Pilotpersonen ohne eigenen Anwendungsfall)</summary>'+
+  '<p>Sie leiten die Schadenbearbeitung einer mittelgroßen Versicherung (ca. 3.000 Beschäftigte). Seit Anfang 2025 liest ein GenAI-Assistent eingehende Schadenmeldungen per E-Mail, fasst sie zusammen, schlägt eine Schadenkategorie vor und entwirft eine Rückfrage an die Kundin oder den Kunden.</p>'+
+  '<p>Sachbearbeitende prüfen Kategorie und Entwurf und geben ihn frei. Seit März 2026 wird die Kategorie bei Schäden unter 500 € ohne Prüfung übernommen, nachdem eine interne Auswertung eine Fehlerquote unter 2 % ergab. Die Rückfragen werden weiter immer geprüft. Das Modell läuft in der eigenen Cloud-Umgebung; die IT hat es wegen Datenschutz ausgewählt.</p>'+
+  '<p>Was hier nicht steht, dürfen Sie plausibel ergänzen oder mit „Weiß ich nicht“ beantworten.</p></details>';
+const BY = Object.fromEntries(ITEMS.map(function(i){return [i.id,i];}));
+
+/* ---------- State ---------- */
+let S = null;
+let SAVED = null;
+function fresh(keep){
+  return {phase:'start', variant:keep?keep.variant:0, research:keep?keep.research:false, caseId:newId(), seq:[], startedAt:null,
+    answers:{}, history:[], current:null, shownAt:0, paused:false, pausedAt:0, draft:{}, exOpen:false, error:'',
+    probes:[], examples:[], corrections:[], checks:[], backs:0, reask:null, endReason:null, abortAt:null, feedback:{}, pilotId:keep?keep.pilotId||'':'', vignette:keep?!!keep.vignette:false, confirmEnd:false};
+}
+function newId(){ const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s='A-'; for(let i=0;i<6;i++) s+=c[Math.floor(Math.random()*c.length)]; return s; }
+function load(){ try{ const r=localStorage.getItem(STORE_KEY); return r?JSON.parse(r):null; }catch(e){ return null; } }
+let saveT=null;
+function save(){ clearTimeout(saveT); saveT=setTimeout(function(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); }catch(e){} },150); }
+function clearStore(){ try{ localStorage.removeItem(STORE_KEY); }catch(e){} }
+
+/* ---------- Helpers ---------- */
+function A(id){ const v=S.answers[id]; return v===undefined?null:v; }
+function special(v){ return v==='unknown'||v==='declined'; }
+function real(v){ return v!==null && v!==undefined && !special(v); }
+function vv(v){ return (v && typeof v==='object' && !Array.isArray(v) && 'v' in v) ? v.v : v; }
+function is(id){ const val=vv(A(id)); for(let i=1;i<arguments.length;i++){ if(val===arguments[i]) return true; } return false; }
+function aiSteps(){ return steps().map(function(s,i){return {s:s,i:i};}).filter(function(x){ return x.s.ki_beitrag && x.s.ki_beitrag!=='nichts'; }); }
+function focal(){ const a=aiSteps(); if(!a.length) return null; const v=A('F2.3'); if(typeof v==='number'){ const f=a.find(function(x){return x.i===v-1;}); if(f) return f; } return a[0]; }
+function focusLabel(){ const f=focal(); return f ? 'Schritt '+(f.i+1)+' („'+f.s.aufgabe+'“)' : 'diesem Ablauf'; }
+const KI_SHORT={erfasst:'erfasst Informationen', analysiert:'analysiert, bewertet', schlaegt_vor:'schlägt vor', fuehrt_aus:'führt selbst aus'};
+const K_SHORT={K1:'Mensch entscheidet', K2:'nach Freigabe', K3:'automatisch, Widerspruch möglich', K4:'sofort, Mensch prüft danach', K5:'sofort, ohne Prüfung'};
+function stepRelated(){ const it=BY[S.current]; if(!it) return false; return it.id==='F2.3' || it.id==='C-F3.2' || String(it.text||'').indexOf('{FOKUS}')>-1; }
+function processHtml(){
+  const st=steps(); if(!st.length) return '';
+  const f=focal();
+  return '<div class="proc">'+st.map(function(x,i){
+    const meta = x.ki_beitrag==='nichts' ? ('ohne KI · '+(x.ausfuehrung==='system'?'System oder Regel':'Mensch')) : ('KI '+(KI_SHORT[x.ki_beitrag]||''));
+    const hum = (x.ki_beitrag!=='nichts' && x.kontrolle) ? x.kontrolle+': '+K_SHORT[x.kontrolle] : '';
+    return '<div class="pstep'+(f&&f.i===i?' focal':'')+'"><span class="pn">'+(i+1)+'</span><span class="pt"><b>'+esc(x.aufgabe)+'</b><span>'+esc(meta)+'</span>'+(hum?'<span>'+esc(hum)+'</span>':'')+'</span></div>'+(i<st.length-1?'<div class="parrow" aria-hidden="true">↓</div>':'');
+  }).join('')+'</div>'+(f && aiSteps().length?'<p class="hint">Hervorgehoben: der Schritt, auf den sich die Fragen zur Prüfung beziehen.</p>':'');
+}
+function changed(){ return is('F4.1','REAL','REVR','TEST','CONS'); }
+function steps(){ const r=A('F2.2r'); if(Array.isArray(r)) return r; const s=A('F2.2'); return Array.isArray(s)?s:[]; }
+function monthIdx(d,late){ return d.y*12 + (d.m ? d.m-1 : (late?11:0)); }
+function dateIssue(){
+  const d=A('F4.4'); if(!d||!d.y) return null;
+  const now=new Date(); const nowIdx=now.getFullYear()*12+now.getMonth();
+  if(monthIdx(d,false)>nowIdx) return 'Sie haben für die Veränderung '+(d.m?'':'das Jahr ')+fmtMonth(d)+' angegeben, also einen Zeitpunkt in der Zukunft. Ist das so gemeint, etwa weil sie geplant ist?';
+  const s=A('F3.19'); if(s&&s.y && monthIdx(d,true)<monthIdx(s,false)) return 'Sie hatten angegeben, dass die Anwendung seit '+fmtMonth(s)+' im Einsatz ist. Die Veränderung lag laut Ihrer Angabe '+(d.m?'im ':'im Jahr ')+fmtMonth(d)+', also davor. Stimmt das so?';
+  return null;
+}
+const MONTHS=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+function fmtMonth(d){ if(!d||!d.y) return ''; return d.m ? (MONTHS[d.m-1]+' '+d.y) : String(d.y); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function fmt(ms){ const s=Math.max(0,Math.round(ms/1000)); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+function effSec(id){ const it=BY[id]; if(!it) return '5'; if(it.e8 && it.e8<=S.variant) return 'opt'; return it.sec; }
+function curSec(){ return S.reask ? '5' : effSec(S.current); }
+function hasEx(it){ return !!it.qex || (it.opts||[]).some(function(x){return x.ex;}); }
+function optText(op){ return op.label + (S.exOpen && op.ex ? ' ('+op.ex+')' : ''); }
+function optLabel(it,v){ if(String(v).indexOf('anderes: ')===0) return 'Anderes: '+String(v).slice(9); const op=(it.opts||[]).find(function(x){return x.v===v;}); return op?op.label:String(v); }
+
+function buildSeq(variant){
+  const core=[], moved=[], opt=[];
+  ITEMS.forEach(function(it){
+    if(it.sec==='opt') opt.push(it.id);
+    else if(it.e8 && it.e8<=variant) moved.push(it.id);
+    else core.push(it.id);
+  });
+  return core.concat(moved, opt, ['END']);
+}
+function findNext(fromId){
+  let i = fromId ? S.seq.indexOf(fromId)+1 : 0;
+  for(; i<S.seq.length; i++){
+    const id=S.seq[i]; if(id==='END') return 'END';
+    const it=BY[id];
+    if(it.agentOnly) continue;
+    let ok=true; if(it.cond){ try{ ok=!!it.cond(); }catch(e){ ok=false; } }
+    if(ok) return id;
+  }
+  return 'END';
+}
+
+/* ---------- Timing ---------- */
+function curMs(){
+  if(S.phase!=='run' || !S.current) return 0;
+  if(S.paused) return Math.max(0, S.pausedAt - S.shownAt);
+  return Math.max(0, Date.now() - S.shownAt);
+}
+function secTimes(){
+  const t={}; ORDER.forEach(function(k){t[k]=0;});
+  S.history.forEach(function(e){ t[e.sec]=(t[e.sec]||0)+e.ms; });
+  if(S.phase==='run' && S.current) t[curSec()] += curMs();
+  return t;
+}
+function coreMs(t){ return ['0','1','2','3','4','5'].reduce(function(a,k){return a+(t[k]||0);},0); }
+
+/* ---------- Flow ---------- */
+function makeDraft(it, v){
+  switch(it.type){
+    case 'multi': { const arr=Array.isArray(v)? v.slice() : []; let other=''; const sel=arr.map(function(x){ if(String(x).indexOf('anderes: ')===0){ other=String(x).slice(9); return 'anderes'; } return x; }); return {sel:sel, other:other}; }
+    case 'open': case 'short': return {text: (typeof v==='string' && !special(v)) ? v : ''};
+    case 'single': return (v && typeof v==='object') ? {pick:v.v, other:v.text||''} : {pick:null, other:''};
+    case 'month': return {y: v&&v.y ? String(v.y) : '', m: v&&v.m ? String(v.m) : ''};
+    case 'stopper': return {v: v&&v.v ? v.v : null, note: v&&v.note ? v.note : ''};
+    case 'steps': {
+      let base = Array.isArray(v) ? v : (it.id==='F2.2r' && Array.isArray(A('F2.2')) ? A('F2.2') : []);
+      const st = base.map(function(x){return Object.assign({}, x);});
+      while(st.length<3) st.push({aufgabe:'', ki_beitrag:'', kontrolle:'', mensch_rolle:''});
+      return {steps: st};
+    }
+    default: return {};
+  }
+}
+function setCurrent(id, prefill){
+  S.current=id; S.shownAt=Date.now(); S.exOpen=false; S.error=''; S.confirmEnd=false;
+  S.draft = makeDraft(BY[id], prefill);
+}
+function submit(value){
+  const id=S.current, it=BY[id];
+  const ms=curMs();
+  if(S.reask){
+    const prev=S.answers[id];
+    S.answers[id]=value;
+    S.corrections.push({id:id, alt:prev, neu:value});
+    S.history.push({id:id, ms:ms, sec:'5', v:value, correction:true, prev:prev});
+    const ret=S.reask.returnTo; S.reask=null; setCurrent(ret);
+    save(); render(); return;
+  }
+  S.answers[id]=value;
+  S.history.push({id:id, ms:ms, sec:effSec(id), v:value});
+  if(it.probe && S.probes.indexOf(id)<0) S.probes.push(id);
+  if(id==='F0.1' && value!==true) return finish('keine_einwilligung');
+  if(id==='OPT' && value!=='ja') return finish('fertig');
+  const nx=findNext(id);
+  if(nx==='END') return finish('fertig');
+  setCurrent(nx); save(); render();
+}
+function goBackTo(target){
+  while(S.history.length){
+    const e=S.history.pop();
+    if(e.correction){ S.answers[e.id]=e.prev; continue; }
+    const v=S.answers[e.id]; delete S.answers[e.id];
+    S.probes = S.probes.filter(function(p){return p!==e.id;});
+    if(e.id===target){ setCurrent(target, v); break; }
+  }
+  S.backs++;
+}
+function finish(reason){
+  if(reason==='abgebrochen') S.abortAt=S.current;
+  S.phase='end'; S.endReason=reason; S.confirmEnd=false; S.paused=false;
+  save(); render(); window.scrollTo(0,0);
+}
+
+/* ---------- Rendering ---------- */
+function render(){
+  const app=document.getElementById('app');
+  if(S.phase==='start') app.innerHTML=renderStart();
+  else if(S.phase==='run') app.innerHTML=renderHeader(false)+'<div class="grid"><main class="chat" id="chat">'+(S.vignette?VIGNETTE:'')+renderThread()+renderCard()+'</main><aside class="panel" id="panel" aria-label="Zeit und Fortschritt">'+renderPanel()+'</aside></div>';
+  else app.innerHTML=renderHeader(true)+renderEnd();
+  afterRender(true);
+}
+function afterRender(scroll){
+  if(S.phase!=='run') return;
+  const card=document.getElementById('card'); if(!card) return;
+  if(scroll){
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    card.scrollIntoView({block:'end', behavior: reduce?'auto':'smooth'});
+  }
+  if(S.paused) return;
+  const f = card.querySelector('textarea, input[type=text], select, .opt, .btn.primary');
+  if(f) { try{ f.focus({preventScroll:true}); }catch(e){ f.focus(); } }
+}
+function rerenderCard(){
+  const c=document.getElementById('card'); if(!c) return render();
+  const a=document.activeElement; const key = a && a.dataset ? [a.dataset.act, a.dataset.v, a.dataset.i, a.dataset.field, a.dataset.draft].join('|') : null;
+  c.outerHTML=renderCard();
+  if(key){
+    const els=document.querySelectorAll('#card [data-act],#card [data-field],#card [data-draft]');
+    for(const el of els){ const k=[el.dataset.act, el.dataset.v, el.dataset.i, el.dataset.field, el.dataset.draft].join('|'); if(k===key){ el.focus({preventScroll:true}); return; } }
+  }
+  afterRender(false);
+}
+
+function renderHeader(ended){
+  const t=secTimes(); const core=coreMs(t); const sec=ended?null:curSec();
+  const curIdx = sec ? ORDER.indexOf(sec) : -1;
+  const segs = ORDER.map(function(k,idx){
+    const target=SEC[k].target*1000; let p=0;
+    if(ended) p = t[k]>0 ? 100 : 0;
+    else if(idx<curIdx) p = 100;
+    else if(idx===curIdx) p = Math.max(6, Math.min(100, t[k]/target*100));
+    return '<div class="seg'+(k==='opt'?' opt':'')+'" title="'+esc(SEC[k].name)+'"><i style="width:'+p.toFixed(1)+'%"></i></div>';
+  }).join('');
+  const optMs=t.opt||0;
+  const clock = '<span class="clock'+(core>CORE_TARGET?' over':'')+'" id="clock" title="Kernstrecke, Ziel höchstens 15 Minuten">'+fmt(core)+' <span class="of">/ 15:00</span>'+(optMs>0?' <span class="of">+ '+fmt(optMs)+'</span>':'')+'</span>';
+  const ctrls = clock +
+    (!ended ? '<button class="btn ghost" data-act="'+(S.paused?'unpause':'pause')+'">'+(S.paused?'Fortsetzen':'Pause')+'</button>' : '') +
+    '<button class="btn ghost" data-act="toggleResearch" aria-pressed="'+S.research+'">IDs und Codes</button>' +
+    (!ended ? '<button class="btn ghost" data-act="endAsk">Beenden</button>' : '');
+  const secLine = ended ? '<span>Durchführung beendet</span><span class="mono">'+esc(S.caseId)+'</span>'
+    : '<span>Abschnitt '+(sec==='opt'?'opt.':sec)+' · '+esc(SEC[sec].name)+'</span><span class="mono">'+esc(S.caseId)+'</span>';
+  const confirm = S.confirmEnd ? '<div class="confirm" role="alertdialog" aria-label="Befragung beenden"><span>Befragung hier beenden? Die bisherigen Antworten bleiben für die Auswertung erhalten.</span><button class="btn primary" data-act="endConfirm">Ja, beenden</button><button class="btn" data-act="endCancel">Weiter</button></div>' : '';
+  return '<header class="top"><div class="top-in"><div class="brand"><div class="title">Stufe-A-Befragung</div><div class="sub">Pilotversion · '+esc(VARIANTS[S.variant].short)+'</div></div><div class="ctrls">'+ctrls+'</div></div><div class="prog" aria-hidden="true">'+segs+'</div><div class="secname">'+secLine+'</div>'+((!ended && steps().length)?'<details class="proc-mobile proc-head"'+(stepRelated()?' open':'')+'><summary><b>Ihr Ablauf</b> ('+steps().length+' Schritte)</summary>'+processHtml()+'</details>':'')+confirm+'</header>';
+}
+
+function tagsHtml(it){
+  if(!S.research) return '';
+  let h='<div class="tags"><span class="tag id">'+esc(it.id)+'</span>';
+  if(it.code) h+='<span class="tag">'+esc(it.code)+'</span>';
+  if(it.prov) h+='<span class="tag prov">vorläufig bis D3</span>';
+  if(it.e8) h+='<span class="tag">E8 Stufe '+it.e8+'</span>';
+  if(it.probe) h+='<span class="tag">Nachfrage</span>';
+  if(it.cond && !it.probe && it.type!=='check') h+='<span class="tag">bedingt</span>';
+  h+='</div>';
+  if(it.rule) h+='<div class="rule">'+esc(it.rule)+'</div>';
+  return h;
+}
+function qText(it){ const t = it.type==='check' ? it.msg() : it.text; return String(t).split('{FOKUS}').join(focusLabel()); }
+
+function answerHtml(it, v){
+  if(v==='unknown') return {cls:' special', html:'Weiß ich nicht'};
+  if(v==='declined') return {cls:' special', html:'Möchte ich nicht angeben'};
+  switch(it.type){
+    case 'consent': return {cls:'', html: v===true?'Ja, einverstanden':'Nein'};
+    case 'check': return {cls:'', html:'Stimmt so'};
+    case 'summary': return {cls:'', html:'Stimmt so'};
+    case 'single': return {cls:'', html: (v&&typeof v==='object') ? esc(optLabel(it,v.v)+': '+v.text) : esc(optLabel(it,v))};
+    case 'multi': return {cls:'', html: esc((v||[]).map(function(x){return optLabel(it,x);}).join(' · '))};
+    case 'month': return {cls:'', html: esc(fmtMonth(v))};
+    case 'stopper': {
+      const lbl = v.v==='keiner' ? 'Nein, keiner davon' : optLabel(BY['F4.9'], v.v);
+      return {cls:'', html: esc(lbl + (v.note ? ' – '+v.note : ''))};
+    }
+    case 'steps': return {cls:'', html: stepsHtml(v)};
+    case 'stepPick': { const st=steps()[v-1]; return {cls:'', html: esc('Schritt '+v+(st?': '+st.aufgabe:''))}; }
+    default: return {cls:'', html: esc(v)};
+  }
+}
+function stepsHtml(st){
+  if(!Array.isArray(st)) return '';
+  return '<ol>'+st.map(function(s){
+    const ki = s.ki_beitrag ? optLabel({opts:KI_OPTS}, s.ki_beitrag) : '–';
+    return '<li>'+esc(s.aufgabe)+'<div class="meta">KI: '+esc(ki)+' · '+esc(s.kontrolle||'–')+(s.ki_beitrag==='nichts'?' · erledigt durch '+(s.ausfuehrung==='system'?'System oder Regel':'Mensch'):'')+'</div></li>';
+  }).join('')+'</ol>';
+}
+
+function renderThread(){
+  let h='<div class="thread">'; let lastSec=null, lastGrp=null;
+  S.history.forEach(function(e){
+    const it=BY[e.id];
+    if(e.sec!==lastSec){ h+='<div class="divider">'+esc(e.sec==='opt'?'Vertiefung (optional)':('Abschnitt '+e.sec+' · '+SEC[e.sec].name))+'</div>'; lastSec=e.sec; lastGrp=null; }
+    if(e.correction){ h+='<div class="grp">Korrektur aus der Zusammenfassung</div>'; }
+    else if(it.grp && it.grp!==lastGrp){ h+='<div class="grp">'+esc(it.grp)+'</div>'; lastGrp=it.grp; }
+    const qt = it.type==='check' ? 'Plausibilitätsfrage zu '+it.target : (it.type==='consent' ? 'Information und Einwilligung' : (it.type==='summary' ? 'Zusammenfassung' : qText(it)));
+    h+='<div class="bubble agent'+(it.type==='check'?' check':'')+'">'+tagsHtml(it)+'<div>'+esc(qt)+'</div></div>';
+    const a=answerHtml(it, e.v);
+    h+='<div class="bubble you'+a.cls+'">'+a.html+'</div>';
+  });
+  if(S.current && S.current!=='END'){
+    const it=BY[S.current]; const sec=curSec();
+    if(sec!==lastSec){ h+='<div class="divider">'+esc(sec==='opt'?'Vertiefung (optional)':('Abschnitt '+sec+' · '+SEC[sec].name))+'</div>'; lastGrp=null; }
+    if(!S.reask && it.grp && it.grp!==lastGrp) h+='<div class="grp">'+esc(it.grp)+'</div>';
+  }
+  return h+'</div>';
+}
+
+function renderCard(){
+  const it=BY[S.current]; if(!it) return '';
+  const d=S.draft; let body='';
+  if(it.type==='consent'){
+    body='<div class="info"><div class="placeholder">Platzhalter: Der endgültige Informations- und Einwilligungstext folgt nach Klärung des Ethik- und Datenschutzverfahrens.</div>'+
+      '<p>In dieser Befragung geht es um eine KI-Anwendung, die in Ihrem Unternehmen im Einsatz ist: was sie macht, wie Menschen ihre Ergebnisse prüfen und ob sich daran etwas verändert hat.</p>'+
+      '<p>Die Befragung ist ein standardisierter Online-Fragebogen; je nach Ihren Antworten folgen einzelne Nachfragen. Sie dauert etwa 15 Minuten. Sie können jede Frage mit „Weiß ich nicht“ oder „Möchte ich nicht angeben“ beantworten und jederzeit abbrechen.</p>'+
+      '<p><b>Im Pilot:</b> Ihre Antworten bleiben in Ihrem Browser und werden nicht gespeichert oder ausgewertet, nur die Zusammenfassung, die Sie am Ende selbst an Vincent schicken.</p>'+
+      '<p>Die Antworten werden für eine Masterarbeit ausgewertet. Einzelne Fälle können für ein vertiefendes Gespräch ausgewählt werden; danach fragen wir am Ende gesondert.</p></div>'+
+      '<div class="row"><button class="btn primary" data-act="consent" data-v="1">Ja, einverstanden</button><button class="btn" data-act="consent" data-v="0">Nein</button></div>';
+  } else if(it.type==='single'){
+    body='<div class="opts" role="group">'+it.opts.map(function(op,i){
+      return '<button class="opt" data-act="pick" data-v="'+esc(op.v)+'" aria-pressed="'+(d.pick===op.v)+'"><span class="key">'+(i+1)+'</span><span>'+esc(optText(op))+'</span></button>';
+    }).join('')+'</div>';
+    const other=it.opts.find(function(x){return x.other && x.v===d.pick;});
+    if(other) body+='<label>'+esc(it.otherLabel||'Bitte nennen')+'<input type="text" id="other-'+esc(it.id)+'" data-draft="other" value="'+esc(d.other)+'" autocomplete="off"></label><div class="row"><button class="btn primary" data-act="submitOther">Weiter</button></div>';
+  } else if(it.type==='multi'){
+    body='<div class="opts" role="group">'+it.opts.map(function(op){
+      return '<button class="opt" data-act="toggle" data-v="'+esc(op.v)+'" aria-pressed="'+(d.sel.indexOf(op.v)>-1)+'"><span class="chk" aria-hidden="true"></span><span>'+esc(optText(op))+'</span></button>';
+    }).join('')+'</div>'+(d.sel.indexOf('anderes')>-1?'<label>Bitte selbst angeben<input type="text" id="other-'+esc(it.id)+'" data-draft="other" value="'+esc(d.other||'')+'" autocomplete="off"></label>':'')+'<div class="row"><button class="btn primary" data-act="submitMulti">Weiter</button></div>';
+  } else if(it.type==='open'){
+    body='<textarea id="ta-'+esc(it.id)+'" data-draft="text" rows="4" aria-label="Antwort">'+esc(d.text)+'</textarea><div class="row"><button class="btn primary" data-act="submitText">Senden</button><span class="hint">Strg/Cmd + Enter</span></div>';
+  } else if(it.type==='short'){
+    body='<input type="text" id="in-'+esc(it.id)+'" data-draft="text" value="'+esc(d.text)+'" aria-label="Antwort" autocomplete="off"><div class="row"><button class="btn primary" data-act="submitText">Senden</button></div>';
+  } else if(it.type==='month'){
+    const now=new Date().getFullYear(); let ys='<option value="">Jahr</option>'; for(let y=now+1;y>=2015;y--) ys+='<option value="'+y+'"'+(d.y===String(y)?' selected':'')+'>'+y+'</option>';
+    let ms='<option value="">Monat unbekannt</option>'; MONTHS.forEach(function(m,i){ ms+='<option value="'+(i+1)+'"'+(d.m===String(i+1)?' selected':'')+'>'+m+'</option>'; });
+    body='<div class="row" style="flex-wrap:nowrap"><label style="flex:1">Monat<select id="m-'+esc(it.id)+'" data-draft="m">'+ms+'</select></label><label style="flex:1">Jahr<select id="y-'+esc(it.id)+'" data-draft="y">'+ys+'</select></label></div><div class="row"><button class="btn primary" data-act="submitMonth">Weiter</button></div>';
+  } else if(it.type==='steps'){
+    body='<div class="steps">'+d.steps.map(function(s,i){
+      const kis='<option value="">bitte wählen</option>'+KI_OPTS.map(function(op){return '<option value="'+op.v+'"'+(s.ki_beitrag===op.v?' selected':'')+'>'+esc(op.label)+'</option>';}).join('');
+      const ks='<option value="">bitte wählen</option>'+K_OPTS.filter(function(op){ return !(s.ki_beitrag==='fuehrt_aus' && op.v==='K1'); }).map(function(op){return '<option value="'+op.v+'"'+(s.kontrolle===op.v?' selected':'')+'>'+op.v+' – '+esc(op.label)+'</option>';}).join('');
+      return '<div class="step"><div class="step-head full"><span class="step-no">Schritt '+(i+1)+'</span><span class="row" style="gap:2px">'+
+        '<button class="btn ghost small" data-act="stepUp" data-i="'+i+'" aria-label="Schritt '+(i+1)+' nach oben"'+(i===0?' disabled':'')+'>↑</button>'+
+        '<button class="btn ghost small" data-act="stepDown" data-i="'+i+'" aria-label="Schritt '+(i+1)+' nach unten"'+(i===d.steps.length-1?' disabled':'')+'>↓</button>'+
+        '<button class="btn ghost small" data-act="stepDel" data-i="'+i+'">Entfernen</button></span></div>'+
+        '<label class="full">Was passiert in diesem Schritt?<input type="text" id="st-'+i+'-a" data-i="'+i+'" data-field="aufgabe" value="'+esc(s.aufgabe)+'" autocomplete="off"></label>'+
+        '<label>Was macht die KI in diesem Schritt?<select id="st-'+i+'-k" data-i="'+i+'" data-field="ki_beitrag">'+kis+'</select></label>'+
+        (s.ki_beitrag==='nichts' ? '<label>Wann wird das Ergebnis wirksam?<span class="hint">entfällt, der Schritt läuft ohne KI</span></label>' : '<label>Wann wird das Ergebnis dieses Schritts wirksam?<select id="st-'+i+'-c" data-i="'+i+'" data-field="kontrolle">'+ks+'</select></label>')+
+        (s.ki_beitrag==='nichts' ? '<label class="full">Wer erledigt diesen Schritt?<select id="st-'+i+'-x" data-i="'+i+'" data-field="ausfuehrung"><option value="">bitte wählen</option><option value="mensch"'+(s.ausfuehrung==='mensch'?' selected':'')+'>ein Mensch</option><option value="system"'+(s.ausfuehrung==='system'?' selected':'')+'>ein anderes System oder eine feste Regel</option></select></label>' : '')+'</div>';
+    }).join('')+'</div><div class="row">'+
+      (d.steps.length<5?'<button class="btn" data-act="stepAdd">Schritt hinzufügen</button>':'')+
+      (typeof A('F2.1')==='string' && !special(A('F2.1')) ? '<button class="btn" data-act="stepSuggest">Aus Schilderung vorschlagen</button>' : '')+
+      '<button class="btn primary" data-act="submitSteps">Schritte bestätigen</button></div>';
+  } else if(it.type==='stopper'){
+    const sel=(A('F4.9')||[]).filter(function(x){return x!=='gewollt';});
+    const ops=sel.map(function(v){return o(v, optLabel(BY['F4.9'],v));}).concat([o('keiner','Nein, keiner davon')]);
+    body='<div class="opts" role="group">'+ops.map(function(op,i){
+      return '<button class="opt" data-act="stopPick" data-v="'+esc(op.v)+'" aria-pressed="'+(d.v===op.v)+'"><span class="key">'+(i+1)+'</span><span>'+esc(op.label)+'</span></button>';
+    }).join('')+'</div>'+
+    (d.v && d.v!=='keiner' ? '<label>Was wurde gestoppt? <span class="o">(kurz, optional)</span><input type="text" id="note-'+esc(it.id)+'" data-draft="note" value="'+esc(d.note)+'" autocomplete="off"></label>' : '')+
+    '<div class="row"><button class="btn primary" data-act="submitStopper">Weiter</button></div>';
+  } else if(it.type==='stepPick'){
+    body='<div class="opts" role="group">'+aiSteps().map(function(x,k){
+      return '<button class="opt" data-act="stepPick" data-v="'+(x.i+1)+'"><span class="key">'+(k+1)+'</span><span>Schritt '+(x.i+1)+': '+esc(x.s.aufgabe)+'</span></button>';
+    }).join('')+'</div>';
+  } else if(it.type==='check'){
+    body='<div class="row"><button class="btn primary" data-act="checkOk">'+esc(it.okLabel||'Stimmt so')+'</button><button class="btn" data-act="checkChange">'+esc(it.changeLabel||'Antwort ändern')+'</button></div>';
+  } else if(it.type==='summary'){
+    body='<div class="sum">'+summaryRows().map(function(r){
+      return '<div class="sum-row"><div><div class="k">'+esc(r.label)+'</div><div class="v">'+r.html+'</div></div><button class="btn ghost small" data-act="edit" data-v="'+esc(r.id)+'">Ändern</button></div>';
+    }).join('')+'</div><div class="row"><button class="btn primary" data-act="summaryOk">Stimmt so, weiter</button></div>';
+  }
+  const parts=[];
+  if(!it.noUnknown && it.type!=='check' && it.type!=='summary') parts.push('<button class="btn ghost" data-act="unknown">Weiß ich nicht</button><button class="btn ghost" data-act="declined">Möchte ich nicht angeben</button>');
+  if(hasEx(it) && !S.exOpen) parts.push('<button class="btn ghost" data-act="showEx">Beispiele zeigen</button>');
+  const canBack = S.history.length>0 && !S.reask && S.current!=='F5.1';
+  const foot='<div class="foot"><div class="foot-l">'+parts.join('')+'</div>'+(canBack?'<button class="btn ghost" data-act="back">← Letzte Antwort ändern</button>':'')+'</div>';
+  const paused = S.paused ? '<div class="paused"><p>Pausiert. Die Zeit läuft nicht weiter.</p><button class="btn primary" data-act="unpause">Fortsetzen</button></div>' : '';
+  return '<section class="card'+(it.type==='check'?' check':'')+'" id="card" aria-live="polite">'+
+    (S.reask?'<div class="banner">Korrektur aus der Zusammenfassung</div>':'')+
+    tagsHtml(it)+(it.ctx && typeof A(it.ctx)==='string' && !special(A(it.ctx)) ? '<div class="info"><span class="hint">Ihre Anwendung (Ihre Angabe von eben):</span><span>„'+esc(A(it.ctx))+'“</span></div>' : '')+'<div class="q">'+esc(qText(it))+'</div>'+
+    (it.hint?'<div class="hint">'+esc(it.hint)+'</div>':'')+
+    (S.exOpen && it.qex?'<div class="hint">'+esc(it.qex)+'</div>':'')+
+    body+(S.error?'<div class="err" role="alert">'+esc(S.error)+'</div>':'')+foot+paused+'</section>';
+}
+
+function summaryRows(){
+  const rows=[];
+  function add(label,id,html){ if(S.answers[id]!==undefined) rows.push({label:label,id:id,html:html!==undefined?html:answerHtml(BY[id],S.answers[id]).html}); }
+  add('Anwendung','F1.4'); add('Ihre Rolle','F1.1'); add('Branche','F1.2'); add('Unternehmensgröße','F1.3');
+  const sid = Array.isArray(A('F2.2r')) ? 'F2.2r' : 'F2.2';
+  add('Ablauf in Schritten', sid);
+  add('Anteil der Fälle mit KI','F3.1'); add('Was ein Mensch prüft','F3.2'); add('Wie oft geändert oder verworfen','F3.3');
+  add('Wer stoppen oder ändern darf','F3.5'); add('Festgelegte Bedingungen für mehr oder weniger Prüfung','F3.8');
+  add('Modell bzw. Anbieter','F3.12'); add('Im Einsatz seit','F3.19');
+  add('Veränderung','F4.1'); add('Was sich ändern sollte','F4.2'); add('Richtung','F4.3'); add('Zeitpunkt','F4.4'); add('Anlass','F4.5'); add('Grundlage','F4.6'); add('Begrenzungen','F4.9');
+  return rows;
+}
+
+function renderPanel(){
+  const procPart = steps().length ? '<h3>Ihr Ablauf</h3>'+processHtml() : '';
+  if(!S.research) return procPart || '<h3>Ihr Ablauf</h3><p class="hint">Erscheint hier, sobald Sie den Ablauf in Schritte gegliedert haben.</p>';
+  const t=secTimes(); const core=coreMs(t); const cs=curSec();
+  const rows=SECTIONS.map(function(s){
+    const ms=t[s.id]||0, tg=s.target*1000, pct=Math.min(100, ms/tg*100), over=ms>tg;
+    return '<div class="prow'+(s.id===cs?' cur':'')+'"><div class="pname">'+(s.id==='opt'?'Opt.':s.id)+' · '+esc(s.name)+'</div><div class="ptime'+(over?' over':'')+'">'+fmt(ms)+' <span>/ '+fmt(tg)+'</span></div><div class="pbar"><i class="'+(over?'over':'')+'" style="width:'+pct.toFixed(1)+'%"></i></div></div>';
+  }).join('');
+  const answered=S.history.filter(function(e){return !e.correction;}).length;
+  let h=procPart+'<h3>Zeit je Abschnitt</h3><div class="prow"><div class="pname" style="font-weight:600">Kernstrecke</div><div class="ptime'+(core>CORE_TARGET?' over':'')+'">'+fmt(core)+' <span>/ 15:00</span></div><div class="pbar"><i class="'+(core>CORE_TARGET?'over':'')+'" style="width:'+Math.min(100,core/CORE_TARGET*100).toFixed(1)+'%"></i></div></div>'+rows+
+    '<h3>Protokoll</h3><div class="kv"><span>Antworten</span><span class="num">'+answered+'</span><span>Nachfragen</span><span class="num">'+S.probes.length+'</span><span>Beispiele angezeigt</span><span class="num">'+S.examples.length+'</span><span>Plausibilitätsfragen</span><span class="num">'+S.checks.length+'</span><span>Korrekturen</span><span class="num">'+S.corrections.length+'</span><span>Schritte zurück</span><span class="num">'+S.backs+'</span></div>';
+  if(S.research && BY[S.current]){ const it=BY[S.current]; h+='<h3>Aktuelle Frage</h3><div class="kv"><span>ID</span><span class="num">'+esc(it.id)+'</span><span>Abschnitt</span><span class="num">'+esc(curSec())+'</span></div>'; }
+  return h;
+}
+
+/* ---------- Start page ---------- */
+function outline(variant){
+  const seq=buildSeq(variant); const m={}; ORDER.forEach(function(k){m[k]={fest:0,bedingt:0};});
+  seq.forEach(function(id){ if(id==='END') return; const it=BY[id]; if(it.probe||it.type==='check') return;
+    const sec=(it.e8&&it.e8<=variant)?'opt':it.sec; if(it.cond) m[sec].bedingt++; else m[sec].fest++; });
+  return m;
+}
+function renderStart(){
+  const m=outline(S.variant);
+  const resume = (SAVED && SAVED.phase==='run') ? (function(){
+    const t={}; ORDER.forEach(function(k){t[k]=0;}); (SAVED.history||[]).forEach(function(e){t[e.sec]=(t[e.sec]||0)+e.ms;});
+    return '<div class="resume"><strong>Unterbrochene Durchführung gefunden</strong><span class="note">Bei Frage '+esc(SAVED.current)+', Kernstrecke bisher '+fmt(coreMs(t))+'. Gespeichert nur in diesem Browser.</span><div class="row"><button class="btn primary" data-act="resume">Fortsetzen</button><button class="btn" data-act="discard">Verwerfen</button></div></div>';
+  })() : '';
+  const rows=SECTIONS.map(function(s){ const c=m[s.id];
+    return '<tr><td>'+(s.id==='opt'?'opt.':s.id)+'</td><td>'+esc(s.name)+'</td><td class="n">'+c.fest+(c.bedingt?' + '+c.bedingt:'')+'</td><td class="n">'+fmt(s.target*1000)+'</td></tr>'; }).join('');
+  const variants=VARIANTS.map(function(v,i){
+    return '<label class="radio"><input type="radio" name="variant" id="variant-'+i+'" data-variant="'+i+'"'+(S.variant===i?' checked':'')+'><span>'+esc(v.label)+'<small>'+esc(v.desc)+'</small></span></label>';
+  }).join('');
+  return '<div class="page"><div class="col">'+
+    '<div class="eyebrow">Pilotversion zum Durchklicken</div>'+
+    '<h1>Stufe-A-Befragung</h1>'+
+    '<p class="lead">Diese Pilotversion spielt den Ablauf der Befragung aus der Spezifikation v0.1 durch: alle Kernfragen, die bedingten Nachfragen, feste Plausibilitätsregeln und den optionalen Vertiefungsblock. Er misst die Zeit je Abschnitt gegen das Ziel von höchstens 15 Minuten für die Kernstrecke.</p>'+
+    resume+
+    '<div class="box"><h2>Pilotlauf: so geht es</h2><ol class="plain"><li>Denken Sie an eine echte KI-Anwendung aus Ihrem Arbeitsumfeld. Wenn Sie keine kennen, nutzen Sie den fiktiven Beispielfall (Häkchen unten).</li><li>Geben Sie keine Firmennamen, Personennamen oder vertraulichen Details ein. Die Antworten bleiben in Ihrem Browser; es wird nichts an einen Server geschickt.</li><li>Am Ende beantworten Sie fünf kurze Fragen zum Pilot, speichern die Zusammenfassung als Datei und schicken sie Vincent per Mail.</li></ol></div>'+
+    '<div class="box"><h2>Pilotangaben</h2><label>Pilot-Kürzel (z. B. P1, kein Name)<input type="text" id="pilot-id" data-pilot="1" value="'+esc(S.pilotId||'')+'" autocomplete="off"></label>'+
+      '<label class="radio"><input type="checkbox" id="vignette" data-vig="1"'+(S.vignette?' checked':'')+'><span>Ich kenne keinen eigenen Anwendungsfall: fiktiven Beispielfall verwenden<small>Der Beispielfall wird während der Befragung oben angezeigt.</small></span></label></div>'+
+    '<div class="box"><h2>Einstellungen</h2>'+variants+
+      '<label class="radio"><input type="checkbox" id="research" data-research="1"'+(S.research?' checked':'')+'><span>IDs, Codes und Auslöseregeln anzeigen<small>Forschungsansicht für Vincent. Für Testpersonen ausgeschaltet lassen.</small></span></label>'+
+      '<div class="row"><button class="btn primary" data-act="start">Befragung starten</button></div></div>'+
+    '</div><div class="col">'+
+    '<div class="box"><h2>Ablauf und Zielzeiten</h2><div class="tbl-wrap"><table><thead><tr><th>Nr.</th><th>Abschnitt</th><th class="n">Fragen</th><th class="n">Ziel</th></tr></thead><tbody>'+rows+'</tbody></table></div><p class="note">Fragen: fest + bedingt (Nachfragen nicht mitgezählt). Die Zielzeiten stammen aus §2 der Spezifikation; ihre Summe liegt über 15 Minuten, deshalb gibt es die Kürzungsvarianten (E8).</p></div>'+
+    '<div class="box"><h2>Noch nicht enthalten</h2><ul class="plain">'+
+      '<li>Informations- und Einwilligungstext (Platzhalter, wartet auf Ethik und Datenschutz)</li>'+
+            '<li>F3.21 Reifegrad entfällt in Stufe A (VP 04.10., K4); F1.5 entfällt (E1)</li>'+
+      '<li>Kontaktdaten und Upload von Unterlagen</li></ul></div>'+
+    '<div class="box"><details><summary>Regeln und Annahmen im Prototyp</summary><ol class="plain">'+
+      '<li>Prozessschritte trägt die Person selbst ein.</li>'+
+      '<li>Ohne KI-Modell (VP 13.10.) entfallen die freie Schilderung (F2.1) und ihre Nachfragen; der Ablauf wird direkt in mindestens zwei Schritten eingetragen. Die Rolle des Menschen ergibt sich aus K1–K5; bei Schritten ohne KI wird gefragt, ob ein Mensch oder ein System sie erledigt.</li>'+
+      '<li>Bei mehreren KI-Schritten wählt die Person einen Fokus-Schritt (F2.3); F3.2 bis F3.6 beziehen sich darauf.</li>'+
+      '<li>P6 über eine Stichwortliste in F4.5 (besser, neues Modell, Update …).</li>'+
+      '<li>P8, wenn eine offene Kernantwort (F1.4, F2.1, F4.2) kürzer als 20 Zeichen oder 4 Wörter ist.</li>'+
+      '<li>F3.3 und F3.4 entfallen, wenn F3.2 = keine fallbezogene Prüfung.</li>'+
+      '<li>Plausibilitätsfragen: F3.2 „keine Prüfung“ trotz Schritt mit Freigabe (K2); Datum der Veränderung vor dem Einsatzbeginn oder in der Zukunft.</li>'+
+      '<li>F3.4a nur, wenn F3.2a = zweite automatische Prüfung. F4.10 bietet die in F4.9 gewählten Begrenzungen an.</li>'+
+      '<li>F5.2 nur, wenn eine Veränderung berichtet wurde; die Antwortoptionen sind ein Vorschlag.</li>'+
+      '<li>Beispiele in Fragen erscheinen nur auf Klick (A6); jeder Klick wird protokolliert.</li>'+
+      '<li>Keine Nachfrage nach „Weiß ich nicht“ oder „Möchte ich nicht angeben“.</li></ol></details></div>'+
+    '</div></div>';
+}
+
+/* ---------- End page and case summary ---------- */
+function monthStr(id){ const d=A(id); if(!real(d)) return d; return d.m ? d.y+'-'+String(d.m).padStart(2,'0') : String(d.y); }
+function val(id){ const v=A(id); return (v && typeof v==='object' && !Array.isArray(v) && 'v' in v) ? (v.text ? v.v+': '+v.text : v.v) : v; }
+function buildCase(){
+  const t=secTimes(); const st=A('F4.10');
+  const probes={}; ITEMS.filter(function(i){return i.probe;}).forEach(function(i){ if(S.answers[i.id]!==undefined) probes[i.id]=S.answers[i.id]; });
+  const dauer={}; ORDER.forEach(function(k){ dauer[k]=Math.round((t[k]||0)/1000); });
+  return {
+    case_id:S.caseId, instrument_version:VERSION, variante:VARIANTS[S.variant].label,
+    gestartet: S.startedAt ? new Date(S.startedAt).toISOString() : null,
+    consent:A('F0.1'), status_betrieb:val('F0.2'), beteiligung:A('F0.3'),
+    rolle:val('F1.1'), branche:val('F1.2'), groesse:val('F1.3'), usecase_beschreibung:A('F1.4'), ki_archetyp:'entfällt (E1, VP 03.10.2026)',
+    ablauf_roh:A('F2.1'),
+    fokus_schritt:(focal()?focal().i+1:null),
+    prozess: steps().map(function(s,i){ return {nr:i+1, aufgabe:s.aufgabe, ki_beitrag:s.ki_beitrag, kontrolle:s.kontrolle, ausfuehrung:s.ausfuehrung||null, quelle:'selbst eingetragen (Prototyp)'}; }),
+    kontrolle:{abdeckung:val('F3.1'), abdeckung_ausnahmen:A('F3.1a'), pruefumfang:val('F3.2'), markierung_ausloeser:val('F3.2a'), andere_kontrolle:A('F3.2b'),
+      aenderungsrate:val('F3.3'), aenderung_erfasst:val('F3.4'), abgleich_automatische_pruefung:val('F3.4a'), rechte:A('F3.5'), reversibilitaet:val('F3.6'), rueckfallregel:val('F3.7'), schwellen:val('F3.8')},
+    daten:{quellen:A('F3.9'), systemrechte:val('F3.10')},
+    sourcing:{gebaut_von:val('F3.11'), modell:A('F3.12'), anpassung:val('F3.13'), betriebsort:val('F3.14'), daten_nur_eu:val('F3.14b'), lizenz:val('F3.15'), begruendung_modellwahl:A('F3.14a'), mehrere_modelle:val('F3.16')},
+    organisation:{vorgaben:A('F3.17'), verantwortung:val('F3.18')},
+    reife:{einsatz_seit:monthStr('F3.19'), rollout:val('F3.20'), case_mat:'nicht in Stufe A (VP 04.10., K4)'},
+    aufgabe:{fall_aehnlichkeit:val('F3.22'), interdependenz:val('F3.23'), ermessen:val('F3.24')},
+    veraenderung:{status:val('F4.1'), beschreibung:A('F4.2'), richtung:val('F4.3'), datum:monthStr('F4.4'), anlass:A('F4.5'), grundlage:A('F4.6'), beteiligung:val('F4.7'),
+      hypothetisch: is('F4.8','neu') ? true : (is('F4.8','ja') ? false : null), begrenzungen:A('F4.9'),
+      gestoppt_durch: st && typeof st==='object' ? st.v : st, gestoppt_notiz: st && typeof st==='object' ? (st.note||null) : null},
+    dokumentarten:A('F5.2'), kontakt_ok: is('F5.3','ja') ? true : (is('F5.3','nein') ? false : A('F5.3')),
+    optional:{angenommen: is('OPT','ja'), budget:val('O.1'), kostenarten:A('O.2'), volumen:val('O.3'), nutzenmessung:A('O.4'), roi:val('O.5'), qualitaetsnachweis:A('O.6'), alternativen:A('O.7'), komponenten:A('O.8')},
+    nachfragen:probes,
+    meta:{ende:S.endReason, abbruch_bei:S.abortAt, dauer_kern_s:Math.round(coreMs(t)/1000), dauer_je_abschnitt_s:dauer,
+      items:S.history.map(function(e){ return {id:e.id, abschnitt:e.sec, s:Math.round(e.ms/100)/10, korrektur:!!e.correction}; }),
+      probes_ausgeloest:S.probes, beispiele_angefordert:S.examples, plausibilitaetsfragen:S.checks, korrekturen:S.corrections, schritte_zurueck:S.backs},
+    pilot:{kuerzel:S.pilotId||null, beispielfall:!!S.vignette, rueckmeldung:FB()}
+  };
+}
+function FB(){ if(!S.feedback || typeof S.feedback!=='object') S.feedback={}; return S.feedback; }
+function fbSelect(key,label,opts){ const cur=FB()[key]||''; return '<label>'+esc(label)+'<select id="fb-'+key+'" data-fb="'+key+'"><option value="">bitte wählen</option>'+opts.map(function(x){return '<option'+(cur===x?' selected':'')+'>'+esc(x)+'</option>';}).join('')+'</select></label>'; }
+function renderEnd(){
+  const t=secTimes(); const core=coreMs(t); const opt=t.opt||0;
+  const restart='<div class="row"><button class="btn primary" data-act="restart">Neue Durchführung</button></div>';
+  if(S.endReason==='keine_einwilligung'){
+    return '<div class="page" style="grid-template-columns:minmax(0,1fr)"><div class="col"><h1>Danke.</h1><p class="lead">Ohne Einwilligung endet die Befragung hier. Es wird nichts gespeichert.</p>'+restart+'</div></div>';
+  }
+  const title = S.endReason==='filter_test' ? 'Danke für Ihr Interesse.' : (S.endReason==='abgebrochen' ? 'Befragung beendet.' : 'Vielen Dank.');
+  const lead = S.endReason==='filter_test' ? 'Diese Befragung richtet sich an KI-Anwendungen, die mit echten Fällen arbeiten. Für reine Tests oder Prototypen endet sie hier (E7).'
+    : (S.endReason==='abgebrochen' ? 'Die Befragung wurde bei Frage '+esc(S.abortAt)+' beendet. Die bisherigen Antworten sind unten zusammengefasst.' : 'Die Befragung ist abgeschlossen. Unten steht die Auswertung für den Pilot.');
+  const main=S.history.filter(function(e){return !e.correction;});
+  const unk=main.filter(function(e){return e.v==='unknown';}).length, dec=main.filter(function(e){return e.v==='declined';}).length;
+  const secRows=SECTIONS.map(function(s){ const ms=t[s.id]||0, n=main.filter(function(e){return e.sec===s.id;}).length; const over=ms>s.target*1000;
+    return '<tr><td>'+esc(s.id==='opt'?'opt.':s.id)+' · '+esc(s.name)+'</td><td class="n"'+(over?' style="color:var(--warn)"':'')+'>'+fmt(ms)+'</td><td class="n">'+fmt(s.target*1000)+'</td><td class="n">'+n+'</td></tr>'; }).join('');
+  const slow=main.slice().sort(function(a,b){return b.ms-a.ms;}).slice(0,6).map(function(e){ const it=BY[e.id]; const q=it.type==='check'?'Plausibilitätsfrage':(it.type==='consent'?'Einwilligung':it.text);
+    return '<tr><td class="mono">'+esc(e.id)+'</td><td>'+esc(q.length>90?q.slice(0,88)+'…':q)+'</td><td class="n">'+fmt(e.ms)+'</td></tr>'; }).join('');
+  const inTarget=core<=CORE_TARGET;
+  const listOr=function(a){ return a.length? esc(a.join(', ')) : '–'; };
+  return '<div class="page"><div class="col">'+
+    '<div class="eyebrow">Pilotauswertung</div><h1>'+esc(title)+'</h1><p class="lead">'+lead+'</p>'+
+    '<div class="stats"><div class="stat"><span class="lbl">Kernstrecke</span><span class="big">'+fmt(core)+'</span><span class="pill '+(inTarget?'ok':'warn')+'">'+(inTarget?'im Ziel (≤ 15:00)':'über Ziel (15:00)')+'</span></div>'+
+      '<div class="stat"><span class="lbl">Vertiefung</span><span class="big">'+fmt(opt)+'</span><span class="lbl">Ziel 4 bis 6 Minuten</span></div>'+
+      '<div class="stat"><span class="lbl">Antworten</span><span class="big">'+main.length+'</span><span class="lbl">'+unk+' × weiß nicht · '+dec+' × keine Angabe</span></div></div>'+
+    '<div class="box"><h2>Zeit je Abschnitt</h2><div class="tbl-wrap"><table><thead><tr><th>Abschnitt</th><th class="n">Ist</th><th class="n">Ziel</th><th class="n">Antworten</th></tr></thead><tbody>'+secRows+'</tbody></table></div></div>'+
+    '<div class="box"><h2>Längste Antwortzeiten</h2><div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Frage</th><th class="n">Zeit</th></tr></thead><tbody>'+slow+'</tbody></table></div></div>'+
+    '<div class="box"><h2>Protokoll</h2><div class="kv"><span>Nachfragen ausgelöst</span><span class="num">'+listOr(S.probes)+'</span><span>Beispiele angezeigt</span><span class="num">'+listOr(S.examples)+'</span><span>Plausibilitätsfragen</span><span class="num">'+listOr(S.checks.map(function(c){return c.id+' ('+c.ergebnis+')';}))+'</span><span>Korrekturen in der Zusammenfassung</span><span class="num">'+listOr(S.corrections.map(function(c){return c.id;}))+'</span><span>Schritte zurück</span><span class="num">'+S.backs+'</span></div></div>'+
+    '</div><div class="col">'+
+    '<div class="box"><h2>Fünf Fragen zum Pilot</h2>'+
+      fbSelect('dauer','Wie kam Ihnen die Länge der Befragung vor?',['zu kurz','angemessen','etwas zu lang','deutlich zu lang'])+
+      fbSelect('skala','Wie verständlich war die Frage „Wann wird das Ergebnis dieses Schritts wirksam?“ mit den Stufen K1 bis K5?',['sehr verständlich','eher verständlich','eher unklar','sehr unklar'])+
+      '<label>Welche Frage war am schwersten zu beantworten, und warum?<textarea id="fb-schwer" data-fb="schwerste" rows="3">'+esc(FB().schwerste||'')+'</textarea></label>'+
+      '<label>Hat sich etwas wiederholt oder unnatürlich angefühlt?<textarea id="fb-wdh" data-fb="wiederholt" rows="3">'+esc(FB().wiederholt||'')+'</textarea></label>'+
+      '<label>Was fehlt oder sollte anders sein?<textarea id="fb-sonst" data-fb="sonstiges" rows="3">'+esc(FB().sonstiges||'')+'</textarea></label></div>'+
+    '<div class="box"><h2>Ergebnis zum Weitergeben</h2><p class="note">Als Datei speichern und per Mail an Vincent schicken (oder kopieren und in die Mail einfügen). Bitte vorher prüfen, dass keine Namen oder vertraulichen Details enthalten sind.</p>'+
+      '<div class="row"><button class="btn primary" data-act="download">Als Datei speichern</button><button class="btn" data-act="copy">Zusammenfassung kopieren</button><span class="flash" id="flash" role="status"></span></div>'+
+      '<textarea id="json" readonly aria-label="Zusammenfassung als JSON">'+esc(JSON.stringify(buildCase(),null,2))+'</textarea></div>'+
+    restart+'</div></div>';
+}
+
+/* ---------- Actions ---------- */
+function pick(v){
+  const it=BY[S.current]; const op=it.opts.find(function(x){return x.v===v;}); if(!op) return;
+  if(op.other){ S.draft.pick=v; S.error=''; rerenderCard(); const f=document.getElementById('other-'+it.id); if(f) f.focus(); return; }
+  submit(v);
+}
+function act(name, ds){
+  const it=BY[S.current]; const d=S.draft;
+  switch(name){
+    case 'start': S.phase='run'; S.seq=buildSeq(S.variant); S.startedAt=Date.now(); setCurrent(findNext(null)); save(); render(); window.scrollTo(0,0); break;
+    case 'resume': S=SAVED; SAVED=null; S.shownAt=Date.now(); S.paused=false; S.confirmEnd=false; save(); render(); break;
+    case 'discard': SAVED=null; clearStore(); render(); break;
+    case 'restart': { const keep={variant:S.variant, research:S.research, pilotId:S.pilotId, vignette:S.vignette}; clearStore(); SAVED=null; S=fresh(keep); render(); window.scrollTo(0,0); break; }
+    case 'toggleResearch': S.research=!S.research; save(); render(); break;
+    case 'pause': S.paused=true; S.pausedAt=Date.now(); save(); render(); break;
+    case 'unpause': S.shownAt += Date.now()-S.pausedAt; S.paused=false; save(); render(); break;
+    case 'endAsk': S.confirmEnd=true; render(); break;
+    case 'endCancel': S.confirmEnd=false; render(); break;
+    case 'endConfirm': finish('abgebrochen'); break;
+    case 'consent': submit(ds.v==='1'); break;
+    case 'pick': pick(ds.v); break;
+    case 'submitOther': { const tx=(d.other||'').trim(); if(!tx){ S.error='Bitte kurz nennen, was gemeint ist.'; rerenderCard(); return; } submit({v:d.pick, text:tx}); break; }
+    case 'toggle': {
+      const op=it.opts.find(function(x){return x.v===ds.v;}); let sel=d.sel.slice(); const on=sel.indexOf(ds.v)>-1;
+      if(op.exclusive) sel = on ? [] : [ds.v];
+      else { sel = on ? sel.filter(function(x){return x!==ds.v;}) : sel.concat([ds.v]); sel = sel.filter(function(x){ const p=it.opts.find(function(y){return y.v===x;}); return !(p&&p.exclusive); }); }
+      d.sel=sel; S.error=''; rerenderCard(); break;
+    }
+    case 'submitMulti': {
+      if(!d.sel.length){ S.error='Bitte mindestens eine Antwort wählen oder unten „Weiß ich nicht“.'; rerenderCard(); return; }
+      if(d.sel.indexOf('anderes')>-1 && !(d.other||'').trim()){ S.error='Bitte kurz nennen, was mit „Anderes“ gemeint ist.'; rerenderCard(); return; }
+      submit(d.sel.map(function(x){ return x==='anderes' ? 'anderes: '+d.other.trim() : x; })); break; }
+    case 'submitText': { const tx=(d.text||'').trim(); if(!tx){ S.error='Bitte eine Antwort eingeben oder unten eine der Optionen wählen.'; rerenderCard(); return; } submit(tx); break; }
+    case 'submitMonth': if(!d.y){ S.error='Bitte mindestens das Jahr wählen.'; rerenderCard(); return; } submit({y:+d.y, m:d.m?+d.m:null}); break;
+    case 'stepPick': submit(+ds.v); break;
+    case 'stopPick': d.v=ds.v; S.error=''; rerenderCard(); break;
+    case 'submitStopper': if(!d.v){ S.error='Bitte eine Antwort wählen.'; rerenderCard(); return; } submit({v:d.v, note:d.v==='keiner'?'':(d.note||'').trim()}); break;
+    case 'unknown': submit('unknown'); break;
+    case 'declined': submit('declined'); break;
+    case 'showEx': S.exOpen=true; if(S.examples.indexOf(S.current)<0) S.examples.push(S.current); save(); rerenderCard(); break;
+    case 'back': { if(!S.history.length) return; const last=S.history[S.history.length-1]; goBackTo(last.id); save(); render(); break; }
+    case 'checkOk': S.checks.push({id:S.current, ergebnis:'stimmt so'}); submit('ok'); break;
+    case 'checkChange': S.checks.push({id:S.current, ergebnis:'geändert'}); goBackTo(it.target); save(); render(); break;
+    case 'edit': { const id=ds.v; S.reask={id:id, returnTo:'F5.1'}; const v=S.answers[id]; S.current=id; S.shownAt=Date.now(); S.exOpen=false; S.error=''; S.draft=makeDraft(BY[id], v); save(); render(); break; }
+    case 'summaryOk': submit('bestaetigt'); break;
+    case 'stepAdd': if(d.steps.length<5){ d.steps.push({aufgabe:'',ki_beitrag:'',kontrolle:'',mensch_rolle:''}); rerenderCard(); } break;
+    case 'stepDel': { const i=+ds.i; d.steps.splice(i,1); if(!d.steps.length) d.steps.push({aufgabe:'',ki_beitrag:'',kontrolle:'',mensch_rolle:''}); rerenderCard(); break; }
+    case 'stepUp': { const i=+ds.i; if(i>0){ const x=d.steps[i]; d.steps[i]=d.steps[i-1]; d.steps[i-1]=x; rerenderCard(); } break; }
+    case 'stepDown': { const i=+ds.i; if(i<d.steps.length-1){ const x=d.steps[i]; d.steps[i]=d.steps[i+1]; d.steps[i+1]=x; rerenderCard(); } break; }
+    case 'stepSuggest': {
+      if(d.steps.some(function(s){return s.aufgabe.trim();})){ S.error='Die Schritte sind schon ausgefüllt. Leeren Sie sie zuerst, wenn Sie neu vorschlagen lassen möchten.'; rerenderCard(); return; }
+      const src=String(A('F2.1')||'');
+      const parts=src.split(/[.!?;]+\s+|\s+(?:und dann|dann|danach|anschließend|anschliessend|schließlich|zum Schluss)\s+/i).map(function(x){return x.trim().replace(/[.!?;]+$/,'');}).filter(function(x){return x.length>3;}).slice(0,5);
+      if(!parts.length){ S.error='In der Schilderung wurden keine Sätze gefunden.'; rerenderCard(); return; }
+      d.steps=parts.map(function(p){ return {aufgabe:p.charAt(0).toUpperCase()+p.slice(1), ki_beitrag:'', kontrolle:'', mensch_rolle:''}; });
+      S.error=''; rerenderCard(); break;
+    }
+    case 'submitSteps': {
+      const filled=d.steps.filter(function(s){return s.aufgabe.trim();});
+      if(!filled.length){ S.error='Bitte mindestens einen Schritt beschreiben oder unten „Weiß ich nicht“ wählen.'; rerenderCard(); return; }
+      const miss=[]; filled.forEach(function(s){ const n=d.steps.indexOf(s)+1; if(!s.ki_beitrag || (s.ki_beitrag!=='nichts' && !s.kontrolle) || (s.ki_beitrag==='nichts' && !s.ausfuehrung)) miss.push(n); });
+      if(filled.length<2){ S.error='Bitte mindestens zwei Schritte beschreiben: was vor der KI passiert und was danach.'; rerenderCard(); return; }
+      if(miss.length){ S.error='Bei Schritt '+miss.join(', ')+' fehlt noch eine Angabe.'; rerenderCard(); return; }
+      if(!filled.some(function(s){return s.ki_beitrag!=='nichts';})){ S.error='Mindestens ein Schritt sollte von der KI unterstützt werden.'; rerenderCard(); return; }
+      submit(filled.map(function(s){ return {aufgabe:s.aufgabe.trim(), ki_beitrag:s.ki_beitrag, kontrolle:s.ki_beitrag==='nichts'?'':s.kontrolle, ausfuehrung:s.ki_beitrag==='nichts'?s.ausfuehrung:'ki'}; }));
+      break;
+    }
+    case 'download': {
+      const blob=new Blob([JSON.stringify(buildCase(),null,2)],{type:'application/json'}); const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download='stufe-a-pilot-'+(String(S.pilotId||'').replace(/[^A-Za-z0-9_-]/g,'')||'ohne-kuerzel')+'-'+new Date().toISOString().slice(0,10)+'.json';
+      document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
+      const fl=document.getElementById('flash'); if(fl) fl.textContent='Gespeichert. Bitte die Datei an die Mail anhängen.';
+      break;
+    }
+    case 'copy': {
+      const ta=document.getElementById('json'); const fl=document.getElementById('flash');
+      const fallback=function(){ ta.focus(); ta.select(); if(fl) fl.textContent='Markiert. Bitte mit Strg/Cmd + C kopieren.'; };
+      try{
+        if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(ta.value).then(function(){ if(fl) fl.textContent='Kopiert.'; }, fallback); }
+        else fallback();
+      }catch(e){ fallback(); }
+      break;
+    }
+  }
+}
+
+/* ---------- Events ---------- */
+document.addEventListener('click', function(e){
+  const t=e.target.closest('[data-act]'); if(!t || t.disabled) return;
+  if(S && S.phase==='run' && t.closest('#card') && Date.now()-S.shownAt<400) return;
+  if(S.paused && t.dataset.act!=='unpause' && t.dataset.act!=='toggleResearch') return;
+  act(t.dataset.act, t.dataset);
+});
+function onField(e){
+  const t=e.target;
+  if(t.dataset.variant!==undefined){ S.variant=+t.dataset.variant; render(); return; }
+  if(t.dataset.research){ S.research=t.checked; render(); return; }
+  if(t.dataset.pilot){ S.pilotId=t.value.slice(0,12); save(); return; }
+  if(t.dataset.vig){ S.vignette=t.checked; save(); return; }
+  if(t.dataset.fb){ FB()[t.dataset.fb]=t.value; const j=document.getElementById('json'); if(j) j.value=JSON.stringify(buildCase(),null,2); save(); return; }
+  if(S.phase!=='run') return;
+  if(t.dataset.draft){ S.draft[t.dataset.draft]=t.value; if(S.error){ S.error=''; const er=document.querySelector('#card .err'); if(er) er.remove(); } save(); return; }
+  if(t.dataset.field!==undefined && t.dataset.i!==undefined){ const s=S.draft.steps[+t.dataset.i]; if(!s) return;
+    const f=t.dataset.field;
+    if(f==='ki_beitrag'){ if(s.ki_beitrag===t.value){ return; } s.ki_beitrag=t.value; if(t.value==='nichts') s.kontrolle=''; else s.ausfuehrung=''; if(t.value==='fuehrt_aus' && s.kontrolle==='K1') s.kontrolle=''; save(); rerenderCard(); return; }
+    s[f]=t.value; save(); }
+}
+document.addEventListener('input', onField);
+document.addEventListener('change', function(e){ if(e.target.tagName==='SELECT' || e.target.type==='radio' || e.target.type==='checkbox') onField(e); });
+document.addEventListener('keydown', function(e){
+  if(!S || S.phase!=='run' || S.paused) return;
+  const t=e.target; const tag=(t.tagName||'').toLowerCase(); const it=BY[S.current]; if(!it) return;
+  if(tag==='textarea' && e.key==='Enter' && (e.metaKey||e.ctrlKey)){ e.preventDefault(); act('submitText', {}); return; }
+  if(tag==='input' && e.key==='Enter' && t.dataset.draft){ e.preventDefault(); const k=t.dataset.draft; if(k==='text') act('submitText',{}); else if(k==='other') act('submitOther',{}); else if(k==='note') act('submitStopper',{}); return; }
+  if(tag==='input' || tag==='textarea' || tag==='select') return;
+  if(/^[1-9]$/.test(e.key) && !e.metaKey && !e.ctrlKey && !e.altKey){
+    if(it.type==='single'){ const op=it.opts[+e.key-1]; if(op){ e.preventDefault(); pick(op.v); } }
+  }
+});
+
+/* ---------- Clock ---------- */
+function tick(){
+  if(!S || S.phase!=='run') return;
+  const t=secTimes(); const core=coreMs(t); const optMs=t.opt||0;
+  const c=document.getElementById('clock');
+  if(c){ c.innerHTML=fmt(core)+' <span class="of">/ 15:00</span>'+(optMs>0?' <span class="of">+ '+fmt(optMs)+'</span>':''); c.classList.toggle('over', core>CORE_TARGET); }
+  const p=document.getElementById('panel'); if(p && getComputedStyle(p).display!=='none') p.innerHTML=renderPanel();
+}
+
+/* ---------- Boot ---------- */
+function start(data){
+  if(data && data.state && data.state.phase) S=data.state;
+  else { S=fresh(); SAVED=load(); if(SAVED && SAVED.phase!=='run') SAVED=null; }
+  render();
+  setInterval(tick, 1000);
+}
+try{ if(window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(function(){ return {state:S}; }); }catch(e){}
+if(window.claude && window.claude.hot && window.claude.hot.ready) window.claude.hot.ready(start);
+else start((window.claude && window.claude.hot && window.claude.hot.data) || {});
+})();
+</script>
+
+</html>
