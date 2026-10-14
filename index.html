@@ -191,7 +191,7 @@ details[open] summary{margin-bottom:8px}
 'use strict';
 
 /* ---------- Instrument (Spezifikation v0.1, Stand 03.10.2026) ---------- */
-const VERSION = '0.3-pilot · Stand 14.10.2026 (ohne KI-Modell)';
+const VERSION = '0.3.1-pilot · Stand 14.10.2026 (ohne KI-Modell)';
 const STORE_KEY = 'stufeA-prototyp-v1';
 const SECTIONS = [
   {id:'0',  name:'Start und Filter', target:90},
@@ -381,6 +381,8 @@ const ITEMS = [
     cond:function(){ const v=A('F4.5'); if(typeof v!=='string'||special(v)) return false; const l=v.toLowerCase(); return P6_WORDS.some(function(w){return l.indexOf(w)>-1;}); }},
   {id:'P5', sec:'4', type:'open', probe:true, text:'Und warum wurde die Veränderung später wieder zurückgenommen?', code:'P5 · ST-REVR',
     rule:'Auslöser: F4.1 = zurückgenommen. Steht nach dem Anlass (F4.5), damit Einführung und Rücknahme getrennt bleiben (VP-Pilot 14.10.).', cond:function(){ return is('F4.1','REVR'); }},
+  {id:'P9', sec:'4', type:'open', probe:true, text:'Und warum wurde die Veränderung nach dem Test nicht umgesetzt?', code:'P9 · ST-TEST · Kandidat AS-BLK',
+    rule:'Auslöser: F4.1 = getestet, aber nicht umgesetzt. Analog zu P5 (VP 14.10.).', cond:function(){ return is('F4.1','TEST'); }},
   {id:'F4.6', sec:'4', type:'multi', text:{
       REAL:'Worauf stützte sich die Entscheidung für diese Veränderung?',
       REVR:'Worauf stützte sich die Entscheidung, die Veränderung zurückzunehmen?',
