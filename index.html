@@ -191,13 +191,13 @@ details[open] summary{margin-bottom:8px}
 'use strict';
 
 /* ---------- Instrument (Spezifikation v0.1, Stand 03.10.2026) ---------- */
-const VERSION = '0.3.1-pilot · Stand 14.10.2026 (ohne KI-Modell)';
+const VERSION = '0.5-pilot · Fokusversion 15.10.2026 (ohne KI-Modell)';
 const STORE_KEY = 'stufeA-prototyp-v1';
 const SECTIONS = [
   {id:'0',  name:'Start und Filter', target:90},
   {id:'1',  name:'Rolle und Use Case', target:120},
   {id:'2',  name:'Typischer Ablauf', target:240},
-  {id:'3',  name:'Kontrolle und weitere Dimensionen', target:330},
+  {id:'3',  name:'Kontrolle und weitere Dimensionen', target:240},
   {id:'4',  name:'Veränderungen', target:150},
   {id:'5',  name:'Zusammenfassung und Kontakt', target:60},
   {id:'opt',name:'Vertiefung (optional)', target:240}
@@ -206,9 +206,7 @@ const SEC = Object.fromEntries(SECTIONS.map(s=>[s.id,s]));
 const ORDER = SECTIONS.map(s=>s.id);
 const CORE_TARGET = 15*60*1000;
 const VARIANTS = [
-  {label:'Voll', short:'Variante voll', desc:'Alle Kernfragen in der Kernstrecke.'},
-  {label:'Kürzung Stufe 1 (E8)', short:'Kürzung Stufe 1', desc:'F3.6, F3.7, F3.16 und F3.18 wandern in den optionalen Block.'},
-  {label:'Kürzung Stufe 2 (E8)', short:'Kürzung Stufe 2', desc:'Zusätzlich F3.22 bis F3.24 (Aufgabenmerkmale).'}
+  {label:'Voll', short:'Fokusversion', desc:'Kernfragen nach Kürzung (VP 15.10.); F3.6 und F3.7 im optionalen Block.'}
 ];
 
 function o(v,label,ex,extra){ return Object.assign({v:v,label:label,ex:ex||null}, extra||{}); }
@@ -258,7 +256,7 @@ const ITEMS = [
   // Abschnitt 2
   {id:'F2.1', sec:'2', agentOnly:true, type:'open', text:'Denken Sie an einen typischen Fall, den diese Anwendung in den letzten Wochen bearbeitet hat. Was löst ihn aus, was passiert dann Schritt für Schritt, und was kommt am Ende heraus?', ctx:'F1.4', code:'ablauf_roh'},
   Object.assign({agentOnly:true}, p8('F2.1','2','Können Sie den Ablauf etwas genauer beschreiben: Was passiert, bevor die KI ins Spiel kommt, was macht sie, und was passiert danach?')),
-  {id:'F2.2', sec:'2', type:'steps', text:'Beschreiben Sie den Ablauf Ihrer Anwendung in drei bis fünf Schritten: Was passiert in jedem Schritt, was macht die KI dabei, und wann wird ihr Ergebnis wirksam?', ctx:'F1.4',
+  {id:'F2.2', sec:'2', type:'steps', text:'Beschreiben Sie den Ablauf Ihrer Anwendung in zwei bis vier Schritten: Was passiert, was macht die KI, und wann wird ihr Ergebnis wirksam?', ctx:'F1.4',
     code:'prozess[] · DIM-BRE · CASE-FUNC · DIM-OVR/OV-TIME (K1–K5)', rule:'Die Person trägt den Ablauf direkt in Schritten ein (mindestens zwei). Ohne KI-Modell (VP 13.10.) entfallen F2.1, P8-F2.1, P1 und F2.2r.'},
   {id:'P1', sec:'2', agentOnly:true, type:'open', probe:true, text:'Was passiert unmittelbar, bevor die KI ins Spiel kommt, und was direkt danach?', code:'P1 · DIM-BRE', rule:'Auslöser: weniger als zwei Schritte eingetragen.',
     cond:function(){ const s=A('F2.2'); return Array.isArray(s) && s.length<2 && !real(A('P8-F2.1')); }},
@@ -293,10 +291,12 @@ const ITEMS = [
   {id:'F3.4a', sec:'3', grp:'Menschliche Kontrolle', type:'single', text:'Wurde diese automatische Prüfung mit menschlicher Prüfung abgeglichen?',
     opts:[o('ja_systematisch','ja, systematisch'), o('ja_stichprobe','ja, stichprobenartig'), o('nein','nein')],
     code:'OV-EVID · Attribut Prüfinstanz = automatisch (VP 04.10., K1)', rule:'Auslöser im Prototyp: F3.2a = zweite automatische Prüfung.', cond:function(){ return is('F3.2a','zweite_pruefung'); }},
-  {id:'F3.5', sec:'3', grp:'Menschliche Kontrolle', type:'short', text:'Wer darf ein Ergebnis aus {FOKUS} stoppen, ändern oder die Nutzung der KI für einen Fall aussetzen?', hint:'Rollen genügen, keine Namen.', code:'OV-RIGHTS'},
-  {id:'F3.6', sec:'3', grp:'Menschliche Kontrolle', e8:1, type:'single', text:'Wenn ein fehlerhaftes Ergebnis aus {FOKUS} wirksam wird: Lässt es sich rückgängig machen?',
+  {id:'F3.5', sec:'3', grp:'Menschliche Kontrolle', type:'multi', text:'Wer darf ein Ergebnis aus {FOKUS} stoppen oder ändern?', hint:'Mehrere Antworten möglich.',
+    opts:[o('pruefer','die Person, die das Ergebnis prüft'), o('fachbereich','Vorgesetzte oder Fachbereich'), o('it','IT oder KI-Team'), o('anderes','Andere (bitte selbst angeben)',null,{other:true}), o('niemand','niemand, ist nicht vorgesehen',null,{exclusive:true})],
+    code:'OV-RIGHTS', rule:'Auswahl statt Freitext; entfällt, wenn F3.2 = keine fallbezogene Prüfung (Pilot Betreuer 15.10.).', cond:function(){ return !is('F3.2','keine'); }},
+  {id:'F3.6', sec:'opt', grp:'Menschliche Kontrolle', type:'single', text:'Wenn ein fehlerhaftes Ergebnis aus {FOKUS} wirksam wird: Lässt es sich rückgängig machen?',
     opts:[o('leicht','leicht'), o('aufwand','mit Aufwand'), o('nicht','praktisch nicht')], code:'OV-REV'},
-  {id:'F3.7', sec:'3', grp:'Menschliche Kontrolle', e8:1, type:'single', text:'Gibt es Situationen, in denen das System einen Fall automatisch an einen Menschen weitergibt?', opts:JANEIN, code:'OV-FALLBACK · ereignisgetriebene Rückgabe an Menschen (VP 04.10., K3)'},
+  {id:'F3.7', sec:'opt', grp:'Menschliche Kontrolle', type:'single', text:'Gibt es Situationen, in denen das System einen Fall automatisch an einen Menschen weitergibt?', opts:JANEIN, code:'OV-FALLBACK · ereignisgetriebene Rückgabe an Menschen (VP 04.10., K3)'},
   {id:'F3.8', sec:'3', grp:'Menschliche Kontrolle', type:'single', text:'Gibt es festgelegte Bedingungen, unter denen die menschliche Prüfung reduziert oder verstärkt würde?',
     opts:[o('schriftlich','ja, schriftlich festgelegt'), o('informell','ja, informell'), o('nein','nein')], code:'OV-THR'},
   {id:'P4', sec:'3', grp:'Menschliche Kontrolle', type:'open', probe:true, text:'Wer hat diese Bedingungen festgelegt?', code:'P4 · OV-THR', rule:'Auslöser: F3.8 = ja.',
@@ -313,9 +313,7 @@ const ITEMS = [
     opts:[o('openai','OpenAI'), o('anthropic','Anthropic'), o('google','Google'), o('microsoft','Microsoft'), o('meta','Meta (Llama)'), o('mistral','Mistral AI'), o('aleph_alpha','Aleph Alpha'), o('cn_open','DeepSeek oder Alibaba (Qwen)'), o('eigen','eigenes Modell des Unternehmens'), o('anderes','Anderes (bitte selbst angeben)',null,{other:true})],
     code:'modell_anbieter (getrennt von Version, VP-Pilot 14.10.)'},
   {id:'F3.12a', sec:'3', grp:'Modell und Betrieb', type:'short', text:'Welches Modell genau, und in welcher Version?', hint:'Falls bekannt, z. B. Modellname und Versionsnummer.', code:'modell_version · CAPEV-CONF (a)',
-    cond:function(){ return Array.isArray(A('F3.12')); }},
-  {id:'F3.13', sec:'3', grp:'Modell und Betrieb', type:'single', text:'Wird das Modell unverändert genutzt, angepasst oder selbst entwickelt?',
-    opts:[o('unveraendert','unverändert'), o('angepasst','angepasst','z. B. feinjustiert'), o('selbst','selbst entwickelt')], code:'CASE-SCALE'},
+    cond:function(){ return Array.isArray(A('F3.12')) && !onlyOwnModel(); }},
   {id:'F3.14', sec:'3', grp:'Modell und Betrieb', prov:true, type:'single', text:'Wo läuft das Modell?',
     opts:[o('anbieter','direkt beim Modellanbieter (API)','z. B. OpenAI, Anthropic, Mistral'), o('hyperscaler','bei einem großen Cloud-Anbieter','z. B. Microsoft Azure, AWS, Google Cloud'), o('eu_cloud','bei einem europäischen oder souveränen Cloud-Anbieter'), o('private_cloud','in der eigenen Cloud-Umgebung (Private Cloud)'), o('eigenes_rz','im eigenen Rechenzentrum')], code:'FR-ACCESS (Betriebsort, granular VP 08.10.)'},
   {id:'F3.14b', sec:'3', grp:'Modell und Betrieb', prov:true, type:'single', text:'Werden die Daten dabei ausschließlich in der EU verarbeitet?', opts:JANEIN, code:'FR-ACCESS (Datenstandort, VP 08.10.)'},
@@ -324,27 +322,14 @@ const ITEMS = [
   {id:'F3.14a', sec:'3', grp:'Modell und Betrieb', prov:true, type:'multi', text:'Was gab den Ausschlag für dieses Modell und diesen Betriebsort?', hint:'Mehrere Antworten möglich.',
     opts:[o('datenschutz','Datenschutz oder Sorge vor Datenabfluss'), o('souveraenitaet','Unabhängigkeit vom Anbieter oder Souveränität'), o('qualitaet','Qualität und Leistung'), o('kosten','Kosten'), o('vorgabe','Vorgabe von IT oder Konzern'), o('verfuegbarkeit','Verfügbarkeit, es gab keine Alternative'), o('anderes','Anderes (bitte selbst angeben)',null,{other:true})],
     code:'FR-ACCESS (Begründung) · D3 als Fallmerkmal (VP 08.10.)'},
-  {id:'F3.16', sec:'3', grp:'Modell und Betrieb', e8:1, type:'single', text:'Wird ein Modell genutzt oder mehrere?', qex:'z. B. je nach Aufgabe oder Schwierigkeit',
-    opts:[o('eines','eines'), o('mehrere','mehrere')], code:'CASE-SCALE (optionales Feld)'},
   // 3d
   {id:'F3.17', sec:'3', grp:'Organisation und Regulatorik', type:'multi', text:'Welche Vorgaben spielen für diese Anwendung eine Rolle?', hint:'Mehrere Antworten möglich.',
     opts:[o('dsgvo','Datenschutz (DSGVO)'), o('ai_act','EU AI Act'), o('branche','branchenspezifische Aufsicht oder Regeln'), o('richtlinie','interne KI-Richtlinie'), o('betriebsrat','Betriebsvereinbarung oder Betriebsrat'), o('anderes','Anderes (bitte selbst angeben)',null,{other:true}), o('keine','keine besonderen',null,{exclusive:true})], code:'CON-GOV · CON-ORG'},
-  {id:'F3.18', sec:'3', grp:'Organisation und Regulatorik', e8:1, type:'single', text:'Wo liegt die Verantwortung für die Anwendung?',
-    opts:[o('fachbereich','Fachbereich'), o('it','IT'), o('ki_team','zentrales KI- oder Digitalteam'), o('gemeinsam','gemeinsam')], code:'CON-ORG'},
   // 3e
   {id:'F3.19', sec:'3', grp:'Reifegrad', type:'month', text:'Seit wann ist die Anwendung im Einsatz?', code:'einsatz_seit'},
-  {id:'F3.20', sec:'3', grp:'Reifegrad', type:'single', text:'Wie breit ist sie ausgerollt?',
-    opts:[o('team','ein Team'), o('bereich','ein Bereich oder Standort'), o('mehrere','mehrere Bereiche'), o('unternehmensweit','unternehmensweit')], code:'rollout · CASE-SCALE'},
-  // 3f
-  {id:'F3.22', sec:'3', grp:'Aufgabenmerkmale', e8:2, type:'single', text:'Wie ähnlich sind sich die Fälle, die die Anwendung bearbeitet?',
-    opts:[o('sehr_aehnlich','sehr ähnlich'), o('teils','teils unterschiedlich'), o('sehr_unterschiedlich','sehr unterschiedlich, häufig Sonderfälle')], code:'CASE-TASK (Unsicherheit)'},
-  {id:'F3.23', sec:'3', grp:'Aufgabenmerkmale', e8:2, type:'single', text:'Hängt das Ergebnis eines Falls von Arbeiten anderer Personen, Teams oder Systeme ab, die sich währenddessen ändern können?',
-    opts:[o('kaum','kaum'), o('teilweise','teilweise'), o('stark','stark')], code:'CASE-TASK (Interdependenz)'},
-  {id:'F3.24', sec:'3', grp:'Aufgabenmerkmale', e8:2, type:'single', text:'Verlangt die Entscheidung in diesem Ablauf eher die Anwendung klarer Regeln oder eher Abwägung und Ermessen?',
-    opts:[o('regeln','klare Regeln'), o('teils','teils, teils'), o('abwaegung','vor allem Abwägung')], code:'CASE-DISC'},
   // Abschnitt 4
-  {id:'F4.1', sec:'4', type:'single', text:'Hat sich seit dem Start etwas daran verändert, welche Schritte die KI übernimmt oder wie Menschen ihre Ergebnisse prüfen?',
-    opts:[o('REAL','ja, umgesetzt'), o('REVR','ja, eingeführt und später wieder zurückgenommen'), o('TEST','getestet, aber nicht umgesetzt'), o('CONS','konkret erwogen, aber nicht getestet'), o('HELD','nein, bewusst so belassen'), o('NOTP','nein, war bisher kein Thema')],
+  {id:'F4.1', sec:'4', type:'single', text:'Wurde seit dem Start etwas daran verändert oder erwogen, welche Schritte die KI übernimmt oder wie Menschen ihre Ergebnisse prüfen?',
+    opts:[o('REAL','ja, verändert'), o('REVR','ja, verändert und später wieder zurückgenommen'), o('TEST','getestet, aber nicht umgesetzt'), o('CONS','konkret erwogen, aber nicht getestet'), o('HELD','nein, bewusst so belassen'), o('NOTP','nein, war bisher kein Thema')],
     code:'ST-REAL · ST-REVR · ST-TEST · ST-CONS · ST-HELD · ST-NOTP', rule:'Ohne Beispielvorfälle; gefragt wird nach der jüngsten Veränderung (flanagan1954).'},
   {id:'P7', sec:'4', type:'open', probe:true, text:'Was müsste passieren, damit Sie das ändern würden?', code:'P7 · OV-THR · EV-HELD', rule:'Auslöser: F4.1 = bewusst so belassen.',
     cond:function(){ return is('F4.1','HELD'); }},
@@ -400,7 +385,7 @@ const ITEMS = [
   {id:'F4.9', sec:'4', type:'multi', text:'Was begrenzt derzeit, dass die KI mehr übernimmt oder weniger geprüft wird?', hint:'Mehrere Antworten möglich.',
     opts:[o('qualitaet','Qualität oder Zuverlässigkeit der Ergebnisse'), o('pruefbarkeit','Ergebnisse schwer überprüfbar oder Fehlerfolgen zu hoch'), o('daten','Daten oder Systemanbindung'), o('recht','Recht, Regulierung, interne Freigaben'), o('organisation','Zuständigkeiten, Kompetenzen, Akzeptanz'), o('kosten','Kosten oder Nutzen'), o('sicherheit','IT-Sicherheit oder Berechtigungen'), o('abhaengigkeit','Abhängigkeit von Anbieter oder Technik'), o('anderes','Anderes (bitte selbst angeben)',null,{other:true}), o('gewollt','nichts, der jetzige Stand ist gewollt',null,{exclusive:true})],
     code:'AS-BAR · CON-CAP/VER/DAT/GOV/ORG/ECO/SEC/ARC'},
-  {id:'F4.10', sec:'4', type:'stopper', text:'Hat einer dieser Punkte eine konkrete Entscheidung oder einen Versuch tatsächlich gestoppt? Welcher?', code:'Kandidat AS-BLK (nur Markierung für Stufe B)',
+  {id:'F4.10', sec:'4', type:'stopper', text:'Hat einer dieser Punkte schon einmal konkret verhindert, dass die KI mehr übernimmt oder weniger geprüft wird? Wenn ja, welcher?', code:'Kandidat AS-BLK (nur Markierung für Stufe B)',
     rule:'Keine Codierung in Stufe A. Angeboten werden die in F4.9 gewählten Begrenzungen.',
     cond:function(){ const b=A('F4.9'); return Array.isArray(b) && b.some(function(x){return x!=='gewollt';}); }},
   // Abschnitt 5
@@ -437,7 +422,7 @@ const BY = Object.fromEntries(ITEMS.map(function(i){return [i.id,i];}));
 let S = null;
 let SAVED = null;
 function fresh(keep){
-  return {phase:'start', variant:keep?keep.variant:0, research:keep?keep.research:false, caseId:newId(), seq:[], startedAt:null,
+  return {phase:'start', variant:(keep&&VARIANTS[keep.variant])?keep.variant:0, research:keep?keep.research:false, caseId:newId(), seq:[], startedAt:null,
     answers:{}, history:[], current:null, shownAt:0, paused:false, pausedAt:0, draft:{}, exOpen:false, error:'',
     probes:[], examples:[], corrections:[], checks:[], backs:0, reask:null, endReason:null, abortAt:null, feedback:{}, pilotId:keep?keep.pilotId||'':'', vignette:keep?!!keep.vignette:false, confirmEnd:false};
 }
@@ -468,6 +453,7 @@ function processHtml(){
     return '<div class="pstep'+(f&&f.i===i&&hl?' focal':'')+'"><span class="pn">'+(i+1)+'</span><span class="pt"><b>'+esc(x.aufgabe)+'</b><span>'+esc(meta)+'</span>'+(hum?'<span>'+esc(hum)+'</span>':'')+'</span></div>'+(i<st.length-1?'<div class="parrow" aria-hidden="true">↓</div>':'');
   }).join('')+'</div>'+(f && hl && aiSteps().length?'<p class="hint">Hervorgehoben: der Schritt, auf den sich die Fragen zur Prüfung beziehen.</p>':'');
 }
+function onlyOwnModel(){ const a=A('F3.12'); return Array.isArray(a) && a.length===1 && a[0]==='eigen'; }
 function changed(){ return is('F4.1','REAL','REVR','TEST','CONS'); }
 function steps(){ const r=A('F2.2r'); if(Array.isArray(r)) return r; const s=A('F2.2'); return Array.isArray(s)?s:[]; }
 function monthIdx(d,late){ return d.y*12 + (d.m ? d.m-1 : (late?11:0)); }
@@ -729,12 +715,12 @@ function renderCard(){
         '<button class="btn ghost small" data-act="stepUp" data-i="'+i+'" aria-label="Schritt '+(i+1)+' nach oben"'+(i===0?' disabled':'')+'>↑</button>'+
         '<button class="btn ghost small" data-act="stepDown" data-i="'+i+'" aria-label="Schritt '+(i+1)+' nach unten"'+(i===d.steps.length-1?' disabled':'')+'>↓</button>'+
         '<button class="btn ghost small" data-act="stepDel" data-i="'+i+'">Entfernen</button></span></div>'+
-        '<label class="full">Was passiert in diesem Schritt?<input type="text" id="st-'+i+'-a" data-i="'+i+'" data-field="aufgabe" value="'+esc(s.aufgabe)+'" autocomplete="off"></label>'+
-        '<label>Was macht die KI in diesem Schritt?<select id="st-'+i+'-k" data-i="'+i+'" data-field="ki_beitrag">'+kis+'</select></label>'+
-        (s.ki_beitrag==='nichts' ? '<label>Wann wird das Ergebnis wirksam?<span class="hint">entfällt, der Schritt läuft ohne KI</span></label>' : '<label>Wann wird das Ergebnis dieses Schritts wirksam?<select id="st-'+i+'-c" data-i="'+i+'" data-field="kontrolle">'+ks+'</select></label>')+
+        '<label class="full">Was passiert?<input type="text" id="st-'+i+'-a" data-i="'+i+'" data-field="aufgabe" value="'+esc(s.aufgabe)+'" autocomplete="off"></label>'+
+        '<label>Was macht die KI?<select id="st-'+i+'-k" data-i="'+i+'" data-field="ki_beitrag">'+kis+'</select></label>'+
+        (s.ki_beitrag==='nichts' ? '<label>Wann wird das Ergebnis wirksam?<span class="hint">entfällt, der Schritt läuft ohne KI</span></label>' : '<label>Wann wird das Ergebnis wirksam?<select id="st-'+i+'-c" data-i="'+i+'" data-field="kontrolle">'+ks+'</select></label>')+
         (s.ki_beitrag==='nichts' ? '<label class="full">Wer erledigt diesen Schritt?<select id="st-'+i+'-x" data-i="'+i+'" data-field="ausfuehrung"><option value="">bitte wählen</option><option value="mensch"'+(s.ausfuehrung==='mensch'?' selected':'')+'>ein Mensch</option><option value="system"'+(s.ausfuehrung==='system'?' selected':'')+'>ein anderes System oder eine feste Regel</option></select></label>' : '')+'</div>';
     }).join('')+'</div><div class="row">'+
-      (d.steps.length<5?'<button class="btn" data-act="stepAdd">Schritt hinzufügen</button>':'')+
+      (d.steps.length<4?'<button class="btn" data-act="stepAdd">Schritt hinzufügen</button>':'')+
       (typeof A('F2.1')==='string' && !special(A('F2.1')) ? '<button class="btn" data-act="stepSuggest">Aus Schilderung vorschlagen</button>' : '')+
       '<button class="btn primary" data-act="submitSteps">Schritte bestätigen</button></div>';
   } else if(it.type==='stopper'){
@@ -813,7 +799,7 @@ function renderStart(){
   })() : '';
   const rows=SECTIONS.map(function(s){ const c=m[s.id];
     return '<tr><td>'+(s.id==='opt'?'opt.':s.id)+'</td><td>'+esc(s.name)+'</td><td class="n">'+c.fest+(c.bedingt?' + '+c.bedingt:'')+'</td><td class="n">'+fmt(s.target*1000)+'</td></tr>'; }).join('');
-  const variants=VARIANTS.map(function(v,i){
+  const variants=VARIANTS.length<2 ? '' : VARIANTS.map(function(v,i){
     return '<label class="radio"><input type="radio" name="variant" id="variant-'+i+'" data-variant="'+i+'"'+(S.variant===i?' checked':'')+'><span>'+esc(v.label)+'<small>'+esc(v.desc)+'</small></span></label>';
   }).join('');
   return '<div class="page"><div class="col">'+
@@ -828,7 +814,7 @@ function renderStart(){
       '<label class="radio"><input type="checkbox" id="research" data-research="1"'+(S.research?' checked':'')+'><span>IDs, Codes und Auslöseregeln anzeigen<small>Forschungsansicht für Vincent. Für Testpersonen ausgeschaltet lassen.</small></span></label>'+
       '<div class="row"><button class="btn primary" data-act="start">Befragung starten</button></div></div>'+
     '</div><div class="col">'+
-    '<div class="box"><h2>Ablauf und Zielzeiten</h2><div class="tbl-wrap"><table><thead><tr><th>Nr.</th><th>Abschnitt</th><th class="n">Fragen</th><th class="n">Ziel</th></tr></thead><tbody>'+rows+'</tbody></table></div><p class="note">Fragen: fest + bedingt (Nachfragen nicht mitgezählt). Die Zielzeiten stammen aus §2 der Spezifikation; ihre Summe liegt über 15 Minuten, deshalb gibt es die Kürzungsvarianten (E8).</p></div>'+
+    '<div class="box"><h2>Ablauf und Zielzeiten</h2><div class="tbl-wrap"><table><thead><tr><th>Nr.</th><th>Abschnitt</th><th class="n">Fragen</th><th class="n">Ziel</th></tr></thead><tbody>'+rows+'</tbody></table></div><p class="note">Fragen: fest + bedingt (Nachfragen nicht mitgezählt).</p></div>'+
     '</div></div>';
 }
 
@@ -850,10 +836,10 @@ function buildCase(){
     kontrolle:{abdeckung:val('F3.1'), abdeckung_ausnahmen:A('F3.1a'), pruefumfang:val('F3.2'), markierung_ausloeser:val('F3.2a'), andere_kontrolle:A('F3.2b'),
       aenderungsrate:val('F3.3'), aenderung_erfasst:val('F3.4'), abgleich_automatische_pruefung:val('F3.4a'), rechte:A('F3.5'), reversibilitaet:val('F3.6'), rueckfallregel:val('F3.7'), schwellen:val('F3.8')},
     daten:{quellen:A('F3.9'), systemrechte:val('F3.10')},
-    sourcing:{gebaut_von:val('F3.11'), modell_anbieter:A('F3.12'), modell_version:A('F3.12a'), anpassung:val('F3.13'), betriebsort:val('F3.14'), daten_nur_eu:val('F3.14b'), lizenz:val('F3.15'), begruendung_modellwahl:A('F3.14a'), mehrere_modelle:val('F3.16')},
-    organisation:{vorgaben:A('F3.17'), verantwortung:val('F3.18')},
-    reife:{einsatz_seit:monthStr('F3.19'), rollout:val('F3.20'), case_mat:'nicht in Stufe A (VP 04.10., K4)'},
-    aufgabe:{fall_aehnlichkeit:val('F3.22'), interdependenz:val('F3.23'), ermessen:val('F3.24')},
+    sourcing:{gebaut_von:val('F3.11'), modell_anbieter:A('F3.12'), modell_version:A('F3.12a'), anpassung:(onlyOwnModel()?'selbst':'nicht erhoben (VP 15.10.)'), betriebsort:val('F3.14'), daten_nur_eu:val('F3.14b'), lizenz:val('F3.15'), begruendung_modellwahl:A('F3.14a'), mehrere_modelle:'nicht erhoben (VP 15.10.)'},
+    organisation:{vorgaben:A('F3.17'), verantwortung:'nicht erhoben (VP 15.10.)'},
+    reife:{einsatz_seit:monthStr('F3.19'), rollout:'nicht erhoben (VP 15.10.)', case_mat:'nicht in Stufe A (VP 04.10., K4)'},
+    aufgabe:'nicht erhoben (VP 15.10.)',
     veraenderung:{status:val('F4.1'), beschreibung:A('F4.2'), richtung:val('F4.3'), datum:monthStr('F4.4'), anlass:A('F4.5'), grundlage:A('F4.6'), beteiligung:val('F4.7'),
       hypothetisch: is('F4.8','neu') ? true : (is('F4.8','ja') ? false : null), begrenzungen:A('F4.9'),
       gestoppt_durch: st && typeof st==='object' ? st.v : st, gestoppt_notiz: st && typeof st==='object' ? (st.note||null) : null},
@@ -896,7 +882,7 @@ function renderEnd(){
     '</div><div class="col">'+
     '<div class="box"><h2>Fünf Fragen zum Pilot</h2>'+
       fbSelect('dauer','Wie kam Ihnen die Länge der Befragung vor?',['zu kurz','angemessen','etwas zu lang','deutlich zu lang'])+
-      fbSelect('skala','Wie verständlich war die Frage „Wann wird das Ergebnis dieses Schritts wirksam?“ mit den Stufen K1 bis K5?',['sehr verständlich','eher verständlich','eher unklar','sehr unklar'])+
+      fbSelect('skala','Wie verständlich war die Frage „Wann wird das Ergebnis wirksam?“ mit den Stufen K1 bis K5?',['sehr verständlich','eher verständlich','eher unklar','sehr unklar'])+
       '<label>Welche Frage war am schwersten zu beantworten, und warum?<textarea id="fb-schwer" data-fb="schwerste" rows="3">'+esc(FB().schwerste||'')+'</textarea></label>'+
       '<label>Hat sich etwas wiederholt oder unnatürlich angefühlt?<textarea id="fb-wdh" data-fb="wiederholt" rows="3">'+esc(FB().wiederholt||'')+'</textarea></label>'+
       '<label>Was fehlt oder sollte anders sein?<textarea id="fb-sonst" data-fb="sonstiges" rows="3">'+esc(FB().sonstiges||'')+'</textarea></label></div>'+
@@ -951,7 +937,7 @@ function act(name, ds){
     case 'checkChange': S.checks.push({id:S.current, ergebnis:'geändert'}); goBackTo(it.target); save(); render(); break;
     case 'edit': { const id=ds.v; S.reask={id:id, returnTo:'F5.1'}; const v=S.answers[id]; S.current=id; S.shownAt=Date.now(); S.exOpen=false; S.error=''; S.draft=makeDraft(BY[id], v); save(); render(); break; }
     case 'summaryOk': submit('bestaetigt'); break;
-    case 'stepAdd': if(d.steps.length<5){ d.steps.push({aufgabe:'',ki_beitrag:'',kontrolle:'',mensch_rolle:''}); rerenderCard(); } break;
+    case 'stepAdd': if(d.steps.length<4){ d.steps.push({aufgabe:'',ki_beitrag:'',kontrolle:'',mensch_rolle:''}); rerenderCard(); } break;
     case 'stepDel': { const i=+ds.i; d.steps.splice(i,1); if(!d.steps.length) d.steps.push({aufgabe:'',ki_beitrag:'',kontrolle:'',mensch_rolle:''}); rerenderCard(); break; }
     case 'stepUp': { const i=+ds.i; if(i>0){ const x=d.steps[i]; d.steps[i]=d.steps[i-1]; d.steps[i-1]=x; rerenderCard(); } break; }
     case 'stepDown': { const i=+ds.i; if(i<d.steps.length-1){ const x=d.steps[i]; d.steps[i]=d.steps[i+1]; d.steps[i+1]=x; rerenderCard(); } break; }
@@ -1038,7 +1024,7 @@ function tick(){
 /* ---------- Boot ---------- */
 function start(data){
   if(data && data.state && data.state.phase) S=data.state;
-  else { S=fresh(); SAVED=load(); if(SAVED && SAVED.phase!=='run') SAVED=null; }
+  else { S=fresh(); SAVED=load(); if(SAVED && (SAVED.phase!=='run' || !VARIANTS[SAVED.variant] || (SAVED.seq||[]).some(function(id){ return id!=='END' && !BY[id]; }))) SAVED=null; }
   render();
   setInterval(tick, 1000);
 }
